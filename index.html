@@ -11,7 +11,7 @@
 <link rel="manifest" href="./manifest.json">
 <link rel="icon" type="image/svg+xml" href="./icon.svg">
 <link rel="apple-touch-icon" href="./icon.svg">
-<title>QUIZ</title>
+<title>QUIZ • Desafio de Escrituras</title>
 <style>
 :root{
   --bg:#f6f7fb;--card:#fff;--text:#1f2937;--muted:#6b7280;--border:#e5e7eb;
@@ -107,6 +107,155 @@ th{font-size:12px;color:var(--muted);text-transform:uppercase}
   .mobile-menu-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.38);z-index:39}
   .mobile-menu-backdrop.show{display:block}
   .sidebar{z-index:40}
+}
+
+
+/* ===== QUIZ v12 — Visual Refresh ===== */
+:root{
+  --brand:#5b4bdb;
+  --brand2:#7c3aed;
+  --brandSoft:#f0edff;
+  --surface:#ffffff;
+  --surface2:#f8f9fd;
+  --text:#172033;
+  --muted2:#667085;
+  --line:#e8eaf2;
+  --shadow:0 12px 35px rgba(23,32,51,.09);
+  --shadowSoft:0 6px 18px rgba(23,32,51,.07);
+  --radius:22px;
+}
+*{box-sizing:border-box}
+body{
+  background:
+    radial-gradient(circle at 92% 4%,rgba(124,58,237,.10),transparent 28%),
+    radial-gradient(circle at 12% 94%,rgba(59,130,246,.08),transparent 28%),
+    #f6f7fb;
+  color:var(--text);
+}
+.sidebar{
+  background:linear-gradient(180deg,#17142e 0%,#211a46 55%,#16132b 100%);
+  border-right:0;
+  box-shadow:10px 0 30px rgba(22,19,43,.10);
+}
+.brand{padding:22px 18px 16px}
+.brand h1{font-size:21px;letter-spacing:-.4px;color:#fff}
+.brand p{color:#c8c3e8}
+.nav button{
+  color:#ddd9f4;border-radius:14px;margin:3px 10px;width:calc(100% - 20px);
+  transition:.18s ease;
+}
+.nav button:hover{background:rgba(255,255,255,.08);transform:translateX(2px)}
+.nav button.active{
+  background:linear-gradient(135deg,rgba(124,58,237,.95),rgba(91,75,219,.95));
+  color:#fff;box-shadow:0 8px 22px rgba(91,75,219,.28)
+}
+.topbar{
+  background:rgba(255,255,255,.86);backdrop-filter:blur(14px);
+  border-bottom:1px solid rgba(232,234,242,.9);
+}
+.player-pill{
+  border:1px solid #e5e2fb;background:#fff;box-shadow:var(--shadowSoft);
+}
+.main{max-width:1280px}
+.hero{
+  background:linear-gradient(135deg,#201b48 0%,#5b4bdb 52%,#7c3aed 100%);
+  color:#fff;border:0;box-shadow:0 18px 45px rgba(91,75,219,.22);
+  position:relative;overflow:hidden;
+}
+.hero:after{
+  content:"";position:absolute;width:260px;height:260px;border-radius:50%;
+  right:-80px;top:-120px;background:rgba(255,255,255,.10)
+}
+.hero h2,.hero h1{color:#fff}
+.hero .muted{color:#e6e3ff}
+.card{
+  border:1px solid var(--line);border-radius:var(--radius);
+  box-shadow:var(--shadowSoft);background:rgba(255,255,255,.96);
+}
+.card:hover{box-shadow:var(--shadow)}
+.stat{position:relative;overflow:hidden}
+.stat:before{
+  content:"";position:absolute;left:0;top:0;bottom:0;width:4px;
+  background:linear-gradient(var(--brand),var(--brand2))
+}
+.stat .value{color:#211b48;letter-spacing:-1px}
+.theme-card{
+  border:1px solid var(--line);border-radius:24px;background:#fff;
+  box-shadow:var(--shadowSoft);transition:.2s ease;overflow:hidden;position:relative
+}
+.theme-card:before{
+  content:"";position:absolute;inset:0 0 auto 0;height:4px;
+  background:linear-gradient(90deg,var(--brand),#3b82f6,var(--brand2))
+}
+.theme-card:hover{transform:translateY(-4px);box-shadow:var(--shadow)}
+.phase-card{
+  border:1px solid var(--line);border-radius:20px;background:#fff;
+  box-shadow:var(--shadowSoft);transition:.18s ease
+}
+.phase-card:not(.locked):hover{transform:translateY(-3px);border-color:#cfc8ff;box-shadow:var(--shadow)}
+.phase-card.locked{background:#f2f3f7;opacity:.72}
+.btn{
+  border-radius:13px;font-weight:750;min-height:44px;
+  transition:transform .15s ease,box-shadow .15s ease,filter .15s ease
+}
+.btn:hover:not(:disabled){transform:translateY(-1px);filter:brightness(1.02)}
+.btn-primary{
+  background:linear-gradient(135deg,var(--brand),var(--brand2));
+  border-color:transparent;box-shadow:0 7px 18px rgba(91,75,219,.22)
+}
+.btn-secondary{background:#fff;border:1px solid #dedbea;color:#292342}
+.btn-danger{box-shadow:0 6px 15px rgba(220,38,38,.10)}
+input,select,textarea{
+  border:1px solid #dfe2eb;border-radius:13px;background:#fff;
+  transition:border .15s ease,box-shadow .15s ease
+}
+input:focus,select:focus,textarea:focus{
+  outline:none;border-color:#8b7cf6;box-shadow:0 0 0 4px rgba(91,75,219,.10)
+}
+.quiz-shell{max-width:850px;margin:auto}
+.quiz-answer{
+  border:1px solid #e0e3ec;border-radius:16px;background:#fff;
+  box-shadow:0 3px 10px rgba(23,32,51,.04);transition:.16s ease
+}
+.quiz-answer:hover:not(:disabled){
+  border-color:#9b8ff5;background:#faf9ff;transform:translateX(3px)
+}
+.quiz-answer.correct{border-color:#22c55e;background:#ecfdf3}
+.quiz-answer.wrong{border-color:#ef4444;background:#fff1f2}
+.progress{height:10px;border-radius:99px;background:#eceef5;overflow:hidden}
+.progress > div{background:linear-gradient(90deg,#3b82f6,var(--brand),var(--brand2));border-radius:99px}
+.badge{border-radius:999px;background:var(--brandSoft);color:#5144c5;border:1px solid #ded8ff}
+.notice{border-radius:16px}
+table{border-collapse:separate;border-spacing:0;width:100%}
+th{background:#f7f7fb;color:#5d6472;font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+th,td{border-bottom:1px solid #eceef4;padding:13px 12px}
+tr:last-child td{border-bottom:0}
+#celebrationOverlay .card,.celebration-card{
+  border-radius:28px;box-shadow:0 25px 70px rgba(23,32,51,.22)
+}
+#view-admin h2,#view-admin h3{letter-spacing:-.4px}
+#view-admin .card{border-color:#e7e4f8}
+#view-profile .card,#view-player .card{max-width:920px}
+.muted{color:var(--muted2)}
+@media(max-width:900px){
+  .sidebar{box-shadow:18px 0 50px rgba(15,12,35,.30)}
+  .topbar{padding:10px 14px}
+  .main{padding:16px 14px 34px}
+  .hero{border-radius:22px;padding:22px 20px}
+  .hero h1,.hero h2{font-size:27px;line-height:1.1}
+  .card,.theme-card,.phase-card{border-radius:19px}
+  .grid2,.grid3,.grid4{gap:12px}
+  .stat{min-height:116px}
+  .quiz-answer{min-height:54px;font-size:15px}
+  table{font-size:13px}
+}
+@media(max-width:560px){
+  .main{padding:12px 10px 28px}
+  .hero{padding:20px 17px}
+  .card{padding:16px}
+  .stat .value{font-size:30px}
+  .theme-card{padding:17px}
+  .btn{min-height:46px}
 }
 
 </style>

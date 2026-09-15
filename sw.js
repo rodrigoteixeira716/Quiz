@@ -1,4 +1,4 @@
-const CACHE_NAME='quiz-pwa-v11-1-supabase-adm';
+const CACHE_NAME='quiz-pwa-v12-visual';
 const APP_SHELL=['./index.html','./manifest.json','./icon.svg'];
 
 self.addEventListener('install',event=>{
