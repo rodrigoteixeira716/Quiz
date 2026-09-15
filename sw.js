@@ -1,4 +1,4 @@
-const CACHE_NAME='quiz-pwa-v8-perfis-pin';
+const CACHE_NAME='quiz-pwa-v9-adm-perfis';
 const APP_SHELL=['./index.html','./manifest.json','./icon.svg'];
 
 self.addEventListener('install',event=>{

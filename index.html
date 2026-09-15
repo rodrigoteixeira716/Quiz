@@ -272,7 +272,7 @@ th{font-size:12px;color:var(--muted);text-transform:uppercase}
         <div class="card" style="margin-bottom:14px">
           <h3 class="section-title">Controle de acesso</h3>
           <p class="section-desc">Contagem local provisória. Com o Supabase, depois poderemos contabilizar todos os aparelhos.</p>
-          <div class="table-wrap"><table><thead><tr><th>Jogador</th><th>Acessos</th><th>Partidas</th><th>Fases concluídas</th><th>Último tema</th><th>Último acesso</th></tr></thead><tbody id="accessBody"></tbody></table></div>
+          <div class="table-wrap"><table><thead><tr><th>Jogador</th><th>Acessos</th><th>Partidas</th><th>Fases concluídas</th><th>Último tema</th><th>Último acesso</th><th>Ações</th></tr></thead><tbody id="accessBody"></tbody></table></div>
         </div>
         <div class="grid2">
           <div class="card">
@@ -8934,9 +8934,41 @@ function renderAccessControl(){
         const games=(p.history||[]).length;
         const completed=Number(p.phases)||0;
         const themeName=p.lastTheme&&themes[p.lastTheme]?themes[p.lastTheme].name:'—';
-        return `<tr><td>${escapeHtml(p.name)}</td><td>${Number(p.accessCount)||0}</td><td>${games}</td><td>${completed}</td><td>${escapeHtml(themeName)}</td><td>${formatAccessDate(p.lastAccess)}</td></tr>`;
+        return `<tr><td>${escapeHtml(p.name)}</td><td>${Number(p.accessCount)||0}</td><td>${games}</td><td>${completed}</td><td>${escapeHtml(themeName)}</td><td>${formatAccessDate(p.lastAccess)}</td>
+<td><div style="display:flex;gap:6px;flex-wrap:wrap">
+<button class="btn btn-secondary" onclick="adminEditPlayer('${p.id}')">✏️ Editar</button>
+<button class="btn btn-danger" onclick="adminDeletePlayer('${p.id}')">🗑️ Excluir</button>
+</div></td></tr>`;
       }).join('')
-    : '<tr><td colspan="6" class="muted">Nenhum acesso registrado ainda.</td></tr>';
+    : '<tr><td colspan="7" class="muted">Nenhum acesso registrado ainda.</td></tr>';
+}
+
+function adminEditPlayer(id){
+  if(!data.adminLogged){alert('Acesso restrito ao administrador.');return}
+  const p=data.players[id]; if(!p)return;
+  const newName=prompt('Nome ou apelido do jogador:',p.name);
+  if(newName===null)return;
+  const cleanName=newName.trim().replace(/\s+/g,' ');
+  if(cleanName.length<2){alert('Informe um nome válido.');return}
+  const newPin=prompt('Novo PIN de 4 dígitos.\\nDeixe em branco para manter o PIN atual:','');
+  if(newPin===null)return;
+  if(newPin!=='' && !/^\d{4}$/.test(newPin)){alert('O PIN deve ter exatamente 4 números.');return}
+  p.name=cleanName;
+  if(newPin!=='')p.pin=newPin;
+  save(); updateStats(); renderAccessControl(); renderPlayerEntry();
+  alert(newPin!==''?'Perfil e PIN atualizados.':'Nome do perfil atualizado. O PIN foi mantido.');
+}
+function adminDeletePlayer(id){
+  if(!data.adminLogged){alert('Acesso restrito ao administrador.');return}
+  const p=data.players[id]; if(!p)return;
+  const ok=confirm(`Excluir definitivamente o perfil "${p.name}"?\n\nO progresso, pontos, medalhas e histórico desse jogador também serão apagados deste aparelho.`);
+  if(!ok)return;
+  delete data.players[id];
+  if(data.currentPlayer===id)data.currentPlayer='';
+  if(localStorage.getItem('quizLastPlayerId')===id)localStorage.removeItem('quizLastPlayerId');
+  if(localStorage.getItem('quizRememberPlayerId')===id)localStorage.removeItem('quizRememberPlayerId');
+  save(); updateStats(); renderAccessControl(); renderPlayerEntry();
+  alert('Perfil excluído.');
 }
 
 function openTheme(key){
