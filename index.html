@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quiz da Igreja</title>
+<style>
+:root{
+  --bg:#f6f7fb;--card:#fff;--text:#1f2937;--muted:#6b7280;--border:#e5e7eb;
+  --primary:#4f46e5;--primary2:#3730a3;--danger:#dc2626;--success:#059669;--warning:#d97706;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text)}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer}
+.hidden{display:none!important}
+.app{display:grid;grid-template-columns:260px 1fr;min-height:100vh}
+.sidebar{background:#111827;color:#fff;padding:18px 14px}
+.brand{font-size:20px;font-weight:800;margin:4px 8px 20px}
+.brand small{display:block;font-size:12px;color:#9ca3af;font-weight:400;margin-top:4px}
+.nav{display:grid;gap:7px}
+.nav button{border:0;background:transparent;color:#e5e7eb;text-align:left;padding:12px;border-radius:12px}
+.nav button:hover,.nav button.active{background:#1f2937;color:#fff}
+.main{padding:22px;min-width:0}
+.topbar{display:flex;gap:12px;justify-content:space-between;align-items:center;margin-bottom:18px;flex-wrap:wrap}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:18px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px}
+.stat .label{font-size:13px;color:var(--muted)}
+.stat .value{font-size:24px;font-weight:800;margin-top:4px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.theme-card,.phase-card{width:100%;border:1px solid var(--border);background:var(--card);border-radius:16px;padding:18px;text-align:left}
+.theme-card:hover,.phase-card:hover{border-color:var(--primary);transform:translateY(-1px)}
+.theme-icon{font-size:30px}
+.muted{color:var(--muted)}
+.btn{border:0;border-radius:10px;padding:11px 14px;font-weight:700}
+.btn-primary{background:var(--primary);color:white}
+.btn-primary:hover{background:var(--primary2)}
+.btn-secondary{background:#eef2ff;color:#3730a3}
+.btn-danger{background:#fee2e2;color:#991b1b}
+.btn-success{background:#d1fae5;color:#065f46}
+.btn-outline{background:white;border:1px solid var(--border);color:var(--text)}
+.form-grid{display:grid;gap:12px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+label{font-size:13px;font-weight:700}
+input,select,textarea{width:100%;border:1px solid var(--border);border-radius:10px;padding:11px;background:#fff;color:var(--text);margin-top:5px}
+textarea{min-height:90px;resize:vertical}
+.quiz-answer{width:100%;display:block;border:1px solid var(--border);background:#fff;padding:14px;border-radius:12px;text-align:left;margin:9px 0}
+.quiz-answer:hover{border-color:var(--primary)}
+.quiz-answer.correct{border-color:var(--success);background:#ecfdf5}
+.quiz-answer.wrong{border-color:var(--danger);background:#fef2f2}
+.progress{height:10px;background:#e5e7eb;border-radius:999px;overflow:hidden}
+.progress>div{height:100%;background:var(--primary);width:0}
+.badge{display:inline-block;border-radius:999px;padding:6px 10px;background:#eef2ff;color:#3730a3;font-size:12px;font-weight:700}
+.table-wrap{overflow:auto}
+table{width:100%;border-collapse:collapse;min-width:700px}
+th,td{text-align:left;padding:11px;border-bottom:1px solid var(--border);vertical-align:top}
+th{font-size:12px;color:var(--muted);text-transform:uppercase}
+.actions{display:flex;gap:7px;flex-wrap:wrap}
+.notice{padding:12px;border-radius:10px;background:#eef2ff;color:#3730a3;margin-top:10px}
+.error{background:#fef2f2;color:#991b1b}
+.success{background:#ecfdf5;color:#065f46}
+.login-box{max-width:420px;margin:50px auto}
+.section-title{margin:0 0 6px}
+.section-desc{margin:0 0 16px;color:var(--muted)}
+.locked{opacity:.55}
+.pill-row{display:flex;gap:8px;flex-wrap:wrap}
+.player-name{font-weight:800}
+.mobile-menu{display:none}
+@media(max-width:900px){
+  .app{grid-template-columns:1fr}
+  .sidebar{display:none}
+  .sidebar.open{display:block}
+  .mobile-menu{display:inline-flex}
+  .stats{grid-template-columns:1fr 1fr}
+  .grid2,.grid3,.form-row{grid-template-columns:1fr}
+  .main{padding:14px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">Quiz da Igreja<small>Temas, fases e desafios</small></div>
+    <div class="nav" id="nav">
+      <button data-view="home" class="active">🏠 Início</button>
+      <button data-theme="mormon">📘 Livro de Mórmon</button>
+      <button data-theme="biblia">📖 Bíblia</button>
+      <button data-theme="dc">📜 Doutrina e Convênios</button>
+      <button data-theme="vem">✨ Vem, e Segue-Me</button>
+      <button data-view="ranking">🏆 Ranking</button>
+      <button data-view="history">🕘 Histórico</button>
+      <button data-view="adminLogin">⚙️ Área ADM</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div>
+        <button class="btn btn-outline mobile-menu" id="mobileMenu">☰ Menu</button>
+        <span class="player-name" id="playerLabel">Jogador: Visitante</span>
+      </div>
+      <div class="actions">
+        <button class="btn btn-secondary" id="changePlayer">Trocar jogador</button>
+      </div>
+    </div>
+
+    <section class="stats">
+      <div class="card stat"><div class="label">Pontos</div><div class="value" id="statScore">0</div></div>
+      <div class="card stat"><div class="label">Medalhas</div><div class="value" id="statMedals">0</div></div>
+      <div class="card stat"><div class="label">Sequência</div><div class="value" id="statStreak">0</div></div>
+      <div class="card stat"><div class="label">Fases concluídas</div><div class="value" id="statPhases">0</div></div>
+    </section>
+
+    <section id="view-home">
+      <div class="card">
+        <h2 class="section-title">Escolha um tema</h2>
+        <p class="section-desc">Responda aos quizzes, avance de fase e acumule pontos.</p>
+        <div class="grid2">
+          <button class="theme-card" data-theme="mormon"><div class="theme-icon">📘</div><h3>Livro de Mórmon</h3><p class="muted">Personagens, acontecimentos, doutrinas e ensinamentos.</p></button>
+          <button class="theme-card" data-theme="biblia"><div class="theme-icon">📖</div><h3>Bíblia</h3><p class="muted">Velho Testamento e Novo Testamento.</p></button>
+          <button class="theme-card" data-theme="dc"><div class="theme-icon">📜</div><h3>Doutrina e Convênios</h3><p class="muted">Seções, revelações e história.</p></button>
+          <button class="theme-card" data-theme="vem"><div class="theme-icon">✨</div><h3>Vem, e Segue-Me</h3><p class="muted">Quiz organizado por estudo semanal.</p></button>
+        </div>
+      </div>
+    </section>
+
+    <section id="view-theme" class="hidden">
+      <div class="card">
+        <h2 id="themeTitle" class="section-title"></h2>
+        <p id="themeDesc" class="section-desc"></p>
+        <div id="phaseGrid" class="grid3"></div>
+      </div>
+    </section>
+
+    <section id="view-quiz" class="hidden">
+      <div class="card">
+        <div class="pill-row">
+          <span class="badge" id="quizThemeBadge"></span>
+          <span class="badge" id="quizPhaseBadge"></span>
+          <span class="badge" id="quizLivesBadge">❤️ 3</span>
+        </div>
+        <h2 id="quizQuestion" style="margin-top:16px"></h2>
+        <div id="quizAnswers"></div>
+        <div id="quizFeedback" class="notice hidden"></div>
+        <div class="progress" style="margin-top:16px"><div id="quizProgress"></div></div>
+        <div class="actions" style="margin-top:14px">
+          <button class="btn btn-primary" id="nextQuestion" disabled>Próxima</button>
+          <button class="btn btn-outline" id="leaveQuiz">Sair</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="view-ranking" class="hidden">
+      <div class="card">
+        <h2 class="section-title">Ranking geral</h2>
+        <p class="section-desc">Classificação dos jogadores salvos neste navegador.</p>
+        <div class="table-wrap"><table><thead><tr><th>Posição</th><th>Jogador</th><th>Pontos</th><th>Medalhas</th><th>Fases</th></tr></thead><tbody id="rankingBody"></tbody></table></div>
+      </div>
+    </section>
+
+    <section id="view-history" class="hidden">
+      <div class="card">
+        <h2 class="section-title">Histórico</h2>
+        <p class="section-desc">Resultados das fases concluídas pelo jogador atual.</p>
+        <div id="historyList"></div>
+      </div>
+    </section>
+
+    <section id="view-player" class="hidden">
+      <div class="card login-box">
+        <h2 class="section-title">Identificação do jogador</h2>
+        <p class="section-desc">Digite seu nome para jogar e entrar no ranking.</p>
+        <form id="playerForm" class="form-grid">
+          <label>Nome do jogador<input id="playerName" required maxlength="40" placeholder="Ex.: Rodrigo"></label>
+          <button class="btn btn-primary" type="submit">Entrar no Quiz</button>
+        </form>
+      </div>
+    </section>
+
+    <section id="view-adminLogin" class="hidden">
+      <div class="card login-box">
+        <h2 class="section-title">Login do Administrador</h2>
+        <p class="section-desc">Área separada para gerenciar o Quiz.</p>
+        <form id="adminLoginForm" class="form-grid">
+          <label>Usuário<input id="adminUser" required value="admin"></label>
+          <label>Senha<input id="adminPass" type="password" required placeholder="Senha"></label>
+          <button class="btn btn-primary" type="submit">Entrar</button>
+          <div id="adminLoginMsg" class="notice hidden"></div>
+        </form>
+      </div>
+    </section>
+
+    <section id="view-admin" class="hidden">
+      <div class="card">
+        <div class="topbar">
+          <div><h2 class="section-title">Painel ADM</h2><p class="section-desc">Gerencie perguntas, respostas, temas e fases.</p></div>
+          <button class="btn btn-danger" id="adminLogout">Sair do ADM</button>
+        </div>
+        <div class="grid2">
+          <div class="card">
+            <h3 id="formTitle">Adicionar pergunta</h3>
+            <form id="questionForm" class="form-grid">
+              <input type="hidden" id="questionId">
+              <div class="form-row">
+                <label>Tema
+                  <select id="qTheme">
+                    <option value="mormon">Livro de Mórmon</option>
+                    <option value="biblia">Bíblia</option>
+                    <option value="dc">Doutrina e Convênios</option>
+                    <option value="vem">Vem, e Segue-Me</option>
+                  </select>
+                </label>
+                <label>Fase
+                  <select id="qPhase">
+                    <option value="1">Fase 1</option>
+                    <option value="2">Fase 2</option>
+                    <option value="3">Fase 3</option>
+                    <option value="4">Desafio Final</option>
+                  </select>
+                </label>
+              </div>
+              <label>Pergunta<textarea id="qText" required placeholder="Digite a pergunta"></textarea></label>
+              <label>Resposta A<input id="qA" required></label>
+              <label>Resposta B<input id="qB" required></label>
+              <label>Resposta C<input id="qC" required></label>
+              <label>Resposta D<input id="qD" required></label>
+              <div class="form-row">
+                <label>Resposta correta
+                  <select id="qCorrect"><option value="0">A</option><option value="1">B</option><option value="2">C</option><option value="3">D</option></select>
+                </label>
+                <label>Pontos por acerto<input id="qPoints" type="number" min="1" max="100" value="10"></label>
+              </div>
+              <div class="actions">
+                <button class="btn btn-primary" type="submit">Salvar pergunta</button>
+                <button class="btn btn-outline hidden" type="button" id="cancelEdit">Cancelar edição</button>
+              </div>
+              <div id="questionMsg" class="notice hidden"></div>
+            </form>
+          </div>
+          <div class="card">
+            <h3>Regras do jogo</h3>
+            <div class="form-grid">
+              <label>Penalidade por erro<input id="settingPenalty" type="number" min="0" max="100"></label>
+              <label>Vidas por fase<input id="settingLives" type="number" min="1" max="10"></label>
+              <label>Percentual para avançar<input id="settingPass" type="number" min="1" max="100"></label>
+              <label>Bônus por sequência de 3 acertos<input id="settingStreak" type="number" min="0" max="100"></label>
+              <button class="btn btn-success" id="saveSettings" type="button">Salvar regras</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <div class="topbar">
+          <div><h3 class="section-title">Perguntas cadastradas</h3><p class="section-desc">Edite ou exclua perguntas já cadastradas.</p></div>
+          <select id="adminFilter" style="max-width:230px">
+            <option value="all">Todos os temas</option>
+            <option value="mormon">Livro de Mórmon</option>
+            <option value="biblia">Bíblia</option>
+            <option value="dc">Doutrina e Convênios</option>
+            <option value="vem">Vem, e Segue-Me</option>
+          </select>
+        </div>
+        <div class="table-wrap"><table><thead><tr><th>Tema</th><th>Fase</th><th>Pergunta</th><th>Correta</th><th>Ações</th></tr></thead><tbody id="questionsBody"></tbody></table></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+const STORAGE_KEY='quizIgrejaDataV2';
+const ADMIN_USER='admin';
+const ADMIN_PASS='1234';
+
+const themes={
+  mormon:{name:'Livro de Mórmon',desc:'Perguntas sobre personagens, acontecimentos, doutrinas e ensinamentos.',icon:'📘'},
+  biblia:{name:'Bíblia',desc:'Perguntas do Velho e Novo Testamento.',icon:'📖'},
+  dc:{name:'Doutrina e Convênios',desc:'Revelações, seções e história.',icon:'📜'},
+  vem:{name:'Vem, e Segue-Me',desc:'Conteúdo organizado por estudo semanal.',icon:'✨'}
+};
+
+const seedQuestions=[{"id":"mormon01","theme":"mormon","phase":1,"text":"Qual profeta saiu de Jerusalém com sua família por ordem do Senhor?","answers":["Leí","Alma","Mórmon","Éter"],"correct":0,"points":10},{"id":"mormon02","theme":"mormon","phase":1,"text":"Qual filho de Leí recebeu a visão da árvore da vida depois de desejar ver o que seu pai havia visto?","answers":["Néfi","Lamã","Lemuel","Sam"],"correct":0,"points":10},{"id":"mormon03","theme":"mormon","phase":1,"text":"O que Néfi foi buscar em Jerusalém na casa de Labão?","answers":["As placas de latão","As placas de ouro","Uma espada nova","O Urim e Tumim"],"correct":0,"points":10},{"id":"mormon04","theme":"mormon","phase":1,"text":"Quem possuía as placas de latão em Jerusalém?","answers":["Labão","Zorã","Ismael","Lamã"],"correct":0,"points":10},{"id":"mormon05","theme":"mormon","phase":1,"text":"Quem acompanhou Néfi e seus irmãos ao deserto depois que Labão morreu?","answers":["Zorã","Amuleque","Gideão","Muleque"],"correct":0,"points":10},{"id":"mormon06","theme":"mormon","phase":1,"text":"Qual objeto orientava a família de Leí em sua jornada?","answers":["Liahona","Éfode","Arca da Aliança","Cajado de Arão"],"correct":0,"points":10},{"id":"mormon07","theme":"mormon","phase":1,"text":"Quem construiu um navio por orientação do Senhor?","answers":["Néfi","Leí","Jacó","Enos"],"correct":0,"points":10},{"id":"mormon08","theme":"mormon","phase":1,"text":"Quais irmãos murmuraram repetidamente contra Leí e Néfi?","answers":["Lamã e Lemuel","Sam e Jacó","José e Jacó","Néfi e Sam"],"correct":0,"points":10},{"id":"mormon09","theme":"mormon","phase":1,"text":"Qual era o nome da esposa de Leí?","answers":["Saria","Abis","Isabel","Sara"],"correct":0,"points":10},{"id":"mormon10","theme":"mormon","phase":1,"text":"Qual visão marcante Leí teve envolvendo uma árvore?","answers":["A árvore da vida","A oliveira de Gideão","A figueira estéril","O cedro do Líbano"],"correct":0,"points":10},{"id":"mormon11","theme":"mormon","phase":1,"text":"O fruto da árvore na visão de Leí representava principalmente o quê?","answers":["O amor de Deus","Riqueza material","Poder político","Conhecimento secular"],"correct":0,"points":10},{"id":"mormon12","theme":"mormon","phase":1,"text":"O que a barra de ferro representa na visão da árvore da vida?","answers":["A palavra de Deus","O sacerdócio levítico","As riquezas","A linhagem de Leí"],"correct":0,"points":10},{"id":"mormon13","theme":"mormon","phase":1,"text":"Qual livro vem logo depois de 1 Néfi?","answers":["2 Néfi","Jacó","Enos","Mosias"],"correct":0,"points":10},{"id":"mormon14","theme":"mormon","phase":1,"text":"Quem foi irmão mais novo de Néfi e tornou-se um importante mestre entre os nefitas?","answers":["Jacó","Lamã","Lemuel","Zorã"],"correct":0,"points":10},{"id":"mormon15","theme":"mormon","phase":1,"text":"Qual cidade Leí e sua família deixaram?","answers":["Jerusalém","Belém","Nazaré","Damasco"],"correct":0,"points":10},{"id":"mormon16","theme":"mormon","phase":2,"text":"Quem ensinou seu povo de uma torre antes de entregar o reino a seu filho?","answers":["Rei Benjamim","Rei Noé","Rei Lamôni","Rei Limí"],"correct":0,"points":10},{"id":"mormon17","theme":"mormon","phase":2,"text":"Qual profeta enfrentou os sacerdotes do rei Noé e foi morto por seu testemunho?","answers":["Abinádi","Alma, o Filho","Amuleque","Samuel"],"correct":0,"points":10},{"id":"mormon18","theme":"mormon","phase":2,"text":"Quem acreditou nas palavras de Abinádi e depois ensinou secretamente o povo?","answers":["Alma","Noé","Amulon","Gideão"],"correct":0,"points":10},{"id":"mormon19","theme":"mormon","phase":2,"text":"Em que lugar Alma batizou seus seguidores?","answers":["Águas de Mórmon","Rio Jordão","Mar Vermelho","Rio Sidom"],"correct":0,"points":10},{"id":"mormon20","theme":"mormon","phase":2,"text":"Quem foi convertido após a visita de um anjo juntamente com os filhos de Mosias?","answers":["Alma, o Filho","Rei Noé","Zeezrom","Coriânton"],"correct":0,"points":10},{"id":"mormon21","theme":"mormon","phase":2,"text":"Quem acompanhou Alma, o Filho, em sua juventude rebelde e depois tornou-se missionário?","answers":["Os filhos de Mosias","Os filhos de Helamã","Os irmãos de Néfi","Os sacerdotes de Noé"],"correct":0,"points":10},{"id":"mormon22","theme":"mormon","phase":2,"text":"Qual missionário serviu entre o povo do rei Lamôni?","answers":["Amon","Aarão","Omner","Himni"],"correct":0,"points":10},{"id":"mormon23","theme":"mormon","phase":2,"text":"Quem era uma serva lamanita que já havia sido convertida ao Senhor e ajudou durante a conversão do povo de Lamôni?","answers":["Abis","Saria","Isabel","Eva"],"correct":0,"points":10},{"id":"mormon24","theme":"mormon","phase":2,"text":"Qual homem discutiu com Amuleque em Amonia e depois foi convertido?","answers":["Zeezrom","Amalicia","Zeraemna","Amulon"],"correct":0,"points":10},{"id":"mormon25","theme":"mormon","phase":2,"text":"Quem foi companheiro missionário de Alma em Amonia?","answers":["Amuleque","Amon","Helamã","Morôni"],"correct":0,"points":10},{"id":"mormon26","theme":"mormon","phase":2,"text":"Qual comandante nefita criou o Estandarte da Liberdade?","answers":["Capitão Morôni","Helamã","Pahorã","Teâncum"],"correct":0,"points":10},{"id":"mormon27","theme":"mormon","phase":2,"text":"Quem liderou os jovens guerreiros conhecidos como os filhos de Helamã?","answers":["Helamã","Morôni","Amon","Alma"],"correct":0,"points":10},{"id":"mormon28","theme":"mormon","phase":2,"text":"Por que os pais dos jovens guerreiros não lutaram?","answers":["Haviam feito convênio de não derramar sangue novamente","Eram sacerdotes","Estavam presos","Moravam fora da terra"],"correct":0,"points":10},{"id":"mormon29","theme":"mormon","phase":2,"text":"Quem ensinou que a fé é como uma semente em Alma 32?","answers":["Alma","Amuleque","Amon","Mosias"],"correct":0,"points":10},{"id":"mormon30","theme":"mormon","phase":2,"text":"Qual povo enterrou suas armas como sinal de seu convênio de não matar novamente?","answers":["Ânti-Néfi-Leítas","Zoramitas","Jareditas","Mulekitas"],"correct":0,"points":10},{"id":"mormon31","theme":"mormon","phase":3,"text":"Qual profeta lamanita pregou aos nefitas do alto de uma muralha?","answers":["Samuel, o Lamanita","Amon","Lamôni","Abinádi"],"correct":0,"points":10},{"id":"mormon32","theme":"mormon","phase":3,"text":"Qual sinal foi dado nas Américas na noite do nascimento de Cristo?","answers":["Uma noite sem escuridão","Um eclipse total","Uma grande inundação","Neve durante toda a noite"],"correct":0,"points":10},{"id":"mormon33","theme":"mormon","phase":3,"text":"Quem apareceu ao povo reunido no templo na terra de Abundância?","answers":["Jesus Cristo","Moisés","Morôni","João Batista"],"correct":0,"points":10},{"id":"mormon34","theme":"mormon","phase":3,"text":"O que Jesus convidou o povo a fazer para testemunhar suas feridas?","answers":["Aproximar-se e tocar as marcas","Escrever uma carta","Voltar para casa","Subir ao monte Sinai"],"correct":0,"points":10},{"id":"mormon35","theme":"mormon","phase":3,"text":"Quantos discípulos Jesus escolheu entre o povo durante Sua visita?","answers":["Doze","Sete","Dez","Quarenta"],"correct":0,"points":10},{"id":"mormon36","theme":"mormon","phase":3,"text":"Qual livro relata a longa guerra final dos nefitas vista por Mórmon?","answers":["Mórmon","Jarom","Ômni","Enos"],"correct":0,"points":10},{"id":"mormon37","theme":"mormon","phase":3,"text":"Quem era filho de Mórmon?","answers":["Morôni","Mosias","Helamã","Néfi"],"correct":0,"points":10},{"id":"mormon38","theme":"mormon","phase":3,"text":"Qual livro narra principalmente a história dos jareditas?","answers":["Éter","Helamã","Jarom","4 Néfi"],"correct":0,"points":10},{"id":"mormon39","theme":"mormon","phase":3,"text":"Quem foi o profeta jaredita que viu o dedo do Senhor e depois o próprio Senhor?","answers":["Irmão de Jarede","Éter","Coriântumr","Jarede"],"correct":0,"points":10},{"id":"mormon40","theme":"mormon","phase":3,"text":"O que o irmão de Jarede pediu ao Senhor que tocasse para iluminar os barcos?","answers":["Pedras","Tochas","Placas de metal","Madeira"],"correct":0,"points":10},{"id":"mormon41","theme":"mormon","phase":3,"text":"Qual livro descreve um período em que não havia contendas entre o povo após a visita de Cristo?","answers":["4 Néfi","Alma","Mosias","Éter"],"correct":0,"points":10},{"id":"mormon42","theme":"mormon","phase":3,"text":"Quem escreveu o convite de perguntar a Deus com coração sincero e real intenção?","answers":["Morôni","Mórmon","Néfi","Alma"],"correct":0,"points":10},{"id":"mormon43","theme":"mormon","phase":3,"text":"Segundo Morôni 10:4–5, por qual poder a verdade pode ser conhecida?","answers":["Pelo poder do Espírito Santo","Pela força física","Por votação","Por riqueza"],"correct":0,"points":10},{"id":"mormon44","theme":"mormon","phase":3,"text":"Qual foi a última grande batalha nefita registrada no Livro de Mórmon?","answers":["Cumora","Sidom","Abundância","Zaraenla"],"correct":0,"points":10},{"id":"mormon45","theme":"mormon","phase":3,"text":"Quem escondeu as placas antes de aparecer séculos depois a Joseph Smith?","answers":["Morôni","Mórmon","Néfi","Alma"],"correct":0,"points":10},{"id":"biblia01","theme":"biblia","phase":1,"text":"Quem foi o primeiro homem segundo Gênesis?","answers":["Adão","Noé","Abraão","Moisés"],"correct":0,"points":10},{"id":"biblia02","theme":"biblia","phase":1,"text":"Quem foi a primeira mulher segundo Gênesis?","answers":["Eva","Sara","Rebeca","Raquel"],"correct":0,"points":10},{"id":"biblia03","theme":"biblia","phase":1,"text":"Quem matou Abel?","answers":["Caim","Sete","Noé","Lameque"],"correct":0,"points":10},{"id":"biblia04","theme":"biblia","phase":1,"text":"Quem construiu uma arca por ordem de Deus?","answers":["Noé","Abraão","Jacó","José"],"correct":0,"points":10},{"id":"biblia05","theme":"biblia","phase":1,"text":"Qual sinal foi dado após o dilúvio?","answers":["Arco-íris","Estrela","Coluna de fogo","Sarça ardente"],"correct":0,"points":10},{"id":"biblia06","theme":"biblia","phase":1,"text":"Quem foi chamado para sair de sua terra e recebeu grandes promessas de Deus?","answers":["Abraão","Ló","Esaú","José"],"correct":0,"points":10},{"id":"biblia07","theme":"biblia","phase":1,"text":"Qual era o nome da esposa de Abraão?","answers":["Sara","Rebeca","Raquel","Lia"],"correct":0,"points":10},{"id":"biblia08","theme":"biblia","phase":1,"text":"Quem foi o filho da promessa de Abraão e Sara?","answers":["Isaque","Ismael","Jacó","José"],"correct":0,"points":10},{"id":"biblia09","theme":"biblia","phase":1,"text":"Qual novo nome foi dado a Jacó?","answers":["Israel","Judá","Efraim","Benjamim"],"correct":0,"points":10},{"id":"biblia10","theme":"biblia","phase":1,"text":"Quem recebeu uma túnica especial de seu pai Jacó?","answers":["José","Rúben","Levi","Judá"],"correct":0,"points":10},{"id":"biblia11","theme":"biblia","phase":1,"text":"Para qual país José foi levado depois de ser vendido?","answers":["Egito","Babilônia","Assíria","Roma"],"correct":0,"points":10},{"id":"biblia12","theme":"biblia","phase":1,"text":"Quem foi chamado por Deus por meio de uma sarça ardente?","answers":["Moisés","Arão","Josué","Samuel"],"correct":0,"points":10},{"id":"biblia13","theme":"biblia","phase":1,"text":"Qual mar se abriu para os israelitas escaparem do Egito?","answers":["Mar Vermelho","Mar Morto","Mar da Galileia","Mediterrâneo"],"correct":0,"points":10},{"id":"biblia14","theme":"biblia","phase":1,"text":"Quem sucedeu Moisés na liderança de Israel?","answers":["Josué","Arão","Calebe","Samuel"],"correct":0,"points":10},{"id":"biblia15","theme":"biblia","phase":1,"text":"Qual cidade teve suas muralhas derrubadas após Israel marchar ao redor dela?","answers":["Jericó","Belém","Hebrom","Nazaré"],"correct":0,"points":10},{"id":"biblia16","theme":"biblia","phase":2,"text":"Qual juiz de Israel era conhecido por sua grande força?","answers":["Sansão","Gideão","Samuel","Eli"],"correct":0,"points":10},{"id":"biblia17","theme":"biblia","phase":2,"text":"Quem ungiu Davi como futuro rei?","answers":["Samuel","Natã","Elias","Eliseu"],"correct":0,"points":10},{"id":"biblia18","theme":"biblia","phase":2,"text":"Quem foi o primeiro rei de Israel?","answers":["Saul","Davi","Salomão","Roboão"],"correct":0,"points":10},{"id":"biblia19","theme":"biblia","phase":2,"text":"Qual filho de Davi construiu o primeiro templo em Jerusalém?","answers":["Salomão","Absalão","Natã","Amnom"],"correct":0,"points":10},{"id":"biblia20","theme":"biblia","phase":2,"text":"Qual profeta desafiou os profetas de Baal no monte Carmelo?","answers":["Elias","Eliseu","Isaías","Jeremias"],"correct":0,"points":10},{"id":"biblia21","theme":"biblia","phase":2,"text":"Quem sucedeu Elias como profeta?","answers":["Eliseu","Isaías","Ezequiel","Amós"],"correct":0,"points":10},{"id":"biblia22","theme":"biblia","phase":2,"text":"Quem foi lançado numa fornalha ardente junto com Sadraque e Mesaque?","answers":["Abede-Nego","Daniel","Neemias","Esdras"],"correct":0,"points":10},{"id":"biblia23","theme":"biblia","phase":2,"text":"Qual profeta passou uma noite na cova dos leões?","answers":["Daniel","Ezequiel","Jeremias","Oséias"],"correct":0,"points":10},{"id":"biblia24","theme":"biblia","phase":2,"text":"Quem foi engolido por um grande peixe?","answers":["Jonas","Joel","Amós","Miquéias"],"correct":0,"points":10},{"id":"biblia25","theme":"biblia","phase":2,"text":"Quem reconstruiu os muros de Jerusalém após o exílio?","answers":["Neemias","Esdras","Daniel","Malaquias"],"correct":0,"points":10},{"id":"biblia26","theme":"biblia","phase":2,"text":"Qual rainha arriscou a vida para interceder por seu povo?","answers":["Ester","Rute","Débora","Bate-Seba"],"correct":0,"points":10},{"id":"biblia27","theme":"biblia","phase":2,"text":"Qual mulher moabita tornou-se bisavó do rei Davi?","answers":["Rute","Ester","Raquel","Miriã"],"correct":0,"points":10},{"id":"biblia28","theme":"biblia","phase":2,"text":"Qual livro bíblico contém muitos cânticos e orações?","answers":["Salmos","Levítico","Números","Juízes"],"correct":0,"points":10},{"id":"biblia29","theme":"biblia","phase":2,"text":"Qual livro vem depois de Salmos no Antigo Testamento cristão?","answers":["Provérbios","Isaías","Jó","Eclesiastes"],"correct":0,"points":10},{"id":"biblia30","theme":"biblia","phase":2,"text":"Qual profeta profetizou sobre o Servo Sofredor em Isaías 53?","answers":["Isaías","Jeremias","Ezequiel","Daniel"],"correct":0,"points":10},{"id":"biblia31","theme":"biblia","phase":3,"text":"Quem era a mãe de Jesus?","answers":["Maria","Marta","Isabel","Ana"],"correct":0,"points":10},{"id":"biblia32","theme":"biblia","phase":3,"text":"Quem batizou Jesus?","answers":["João Batista","Pedro","Tiago","André"],"correct":0,"points":10},{"id":"biblia33","theme":"biblia","phase":3,"text":"Em qual rio Jesus foi batizado?","answers":["Jordão","Nilo","Eufrates","Tigre"],"correct":0,"points":10},{"id":"biblia34","theme":"biblia","phase":3,"text":"Quantos apóstolos Jesus escolheu durante Seu ministério mortal?","answers":["Doze","Sete","Dez","Setenta"],"correct":0,"points":10},{"id":"biblia35","theme":"biblia","phase":3,"text":"Quem negou conhecer Jesus três vezes antes do galo cantar?","answers":["Pedro","João","Tomé","Mateus"],"correct":0,"points":10},{"id":"biblia36","theme":"biblia","phase":3,"text":"Quem traiu Jesus?","answers":["Judas Iscariotes","Filipe","André","Bartolomeu"],"correct":0,"points":10},{"id":"biblia37","theme":"biblia","phase":3,"text":"Qual discípulo era cobrador de impostos antes de seguir Jesus?","answers":["Mateus","Pedro","João","Tiago"],"correct":0,"points":10},{"id":"biblia38","theme":"biblia","phase":3,"text":"Quem subiu numa árvore para ver Jesus passar?","answers":["Zaqueu","Nicodemos","Lázaro","Jairo"],"correct":0,"points":10},{"id":"biblia39","theme":"biblia","phase":3,"text":"Quem Jesus ressuscitou depois de quatro dias no sepulcro?","answers":["Lázaro","Estêvão","Jairo","Bartimeu"],"correct":0,"points":10},{"id":"biblia40","theme":"biblia","phase":3,"text":"Qual milagre envolveu cinco pães e dois peixes?","answers":["Alimentação de uma multidão","Transformação de água em vinho","Cura de um cego","Pesca milagrosa"],"correct":0,"points":10},{"id":"biblia41","theme":"biblia","phase":3,"text":"Em qual cidade ocorreu o primeiro milagre registrado no Evangelho de João?","answers":["Caná","Belém","Jericó","Betânia"],"correct":0,"points":10},{"id":"biblia42","theme":"biblia","phase":3,"text":"Quem inicialmente duvidou da Ressurreição até ver Jesus?","answers":["Tomé","Pedro","João","Tiago"],"correct":0,"points":10},{"id":"biblia43","theme":"biblia","phase":3,"text":"Quem teve uma visão de Jesus no caminho de Damasco e tornou-se apóstolo?","answers":["Paulo","Barnabé","Silas","Timóteo"],"correct":0,"points":10},{"id":"biblia44","theme":"biblia","phase":3,"text":"Qual livro registra a história da Igreja logo após a Ressurreição e Ascensão de Cristo?","answers":["Atos dos Apóstolos","Romanos","Hebreus","Apocalipse"],"correct":0,"points":10},{"id":"biblia45","theme":"biblia","phase":3,"text":"Qual é o último livro do Novo Testamento?","answers":["Apocalipse","Judas","Hebreus","Atos"],"correct":0,"points":10},{"id":"dc01","theme":"dc","phase":1,"text":"Quem recebeu a maioria das revelações de Doutrina e Convênios?","answers":["Joseph Smith","Brigham Young","Oliver Cowdery","Sidney Rigdon"],"correct":0,"points":10},{"id":"dc02","theme":"dc","phase":1,"text":"Qual seção contém a Palavra de Sabedoria?","answers":["89","20","76","110"],"correct":0,"points":10},{"id":"dc03","theme":"dc","phase":1,"text":"Qual seção contém artigos sobre a organização e governo da Igreja, incluindo orações sacramentais?","answers":["20","42","84","121"],"correct":0,"points":10},{"id":"dc04","theme":"dc","phase":1,"text":"Qual seção é conhecida como a “lei da Igreja”?","answers":["42","19","50","93"],"correct":0,"points":10},{"id":"dc05","theme":"dc","phase":1,"text":"Qual seção ensina que o valor das almas é grande à vista de Deus?","answers":["18","27","65","98"],"correct":0,"points":10},{"id":"dc06","theme":"dc","phase":1,"text":"Qual seção contém a revelação dada a Emma Smith, chamando-a de “senhora eleita”?","answers":["25","8","57","90"],"correct":0,"points":10},{"id":"dc07","theme":"dc","phase":1,"text":"Qual seção ensina sobre dons do Espírito?","answers":["46","12","70","104"],"correct":0,"points":10},{"id":"dc08","theme":"dc","phase":1,"text":"Qual seção contém o mandamento de estudar e aprender tanto pelo estudo como pela fé?","answers":["88","35","61","107"],"correct":0,"points":10},{"id":"dc09","theme":"dc","phase":1,"text":"Qual seção inclui a instrução “Organizai-vos; preparai todas as coisas necessárias”?","answers":["88","58","89","132"],"correct":0,"points":10},{"id":"dc10","theme":"dc","phase":1,"text":"Qual seção contém a visão dos três graus de glória?","answers":["76","84","93","110"],"correct":0,"points":10},{"id":"dc11","theme":"dc","phase":1,"text":"Quem recebeu a visão registrada em Doutrina e Convênios 76 com Joseph Smith?","answers":["Sidney Rigdon","Oliver Cowdery","Martin Harris","David Whitmer"],"correct":0,"points":10},{"id":"dc12","theme":"dc","phase":1,"text":"Qual seção ensina princípios sobre o Dia do Senhor e a reunião para oferecer sacramentos?","answers":["59","21","72","129"],"correct":0,"points":10},{"id":"dc13","theme":"dc","phase":1,"text":"Qual seção contém a revelação conhecida como o prefácio do Senhor para Doutrina e Convênios?","answers":["1","10","20","30"],"correct":0,"points":10},{"id":"dc14","theme":"dc","phase":1,"text":"Qual seção contém a voz do Senhor declarando que Sua obra avançará independentemente da fraqueza humana?","answers":["1","5","13","24"],"correct":0,"points":10},{"id":"dc15","theme":"dc","phase":1,"text":"Qual seção registra instruções sobre o chamado e deveres de vários ofícios do sacerdócio na organização da Igreja?","answers":["20","49","78","115"],"correct":0,"points":10},{"id":"dc16","theme":"dc","phase":2,"text":"Qual seção contém o juramento e convênio do sacerdócio?","answers":["84","76","89","121"],"correct":0,"points":10},{"id":"dc17","theme":"dc","phase":2,"text":"Qual seção ensina que “a glória de Deus é inteligência”?","answers":["93","50","101","130"],"correct":0,"points":10},{"id":"dc18","theme":"dc","phase":2,"text":"Qual seção ensina que o Pai tem um corpo de carne e ossos tão tangível quanto o do homem?","answers":["130","110","88","42"],"correct":0,"points":10},{"id":"dc19","theme":"dc","phase":2,"text":"Qual seção contém ensinamentos sobre o poder e a autoridade do sacerdócio e adverte contra domínio injusto?","answers":["121","84","107","132"],"correct":0,"points":10},{"id":"dc20","theme":"dc","phase":2,"text":"Em qual seção está a revelação recebida na Cadeia de Liberty que começa com o clamor “Ó Deus, onde estás?”","answers":["121","89","110","136"],"correct":0,"points":10},{"id":"dc21","theme":"dc","phase":2,"text":"Qual seção também contém ensinamentos recebidos durante a prisão de Joseph Smith em Liberty sobre adversidade e perseverança?","answers":["122","20","57","95"],"correct":0,"points":10},{"id":"dc22","theme":"dc","phase":2,"text":"Qual seção contém a profecia de que o evangelho iria “rolar até os confins da Terra” em linguagem ligada à pedra de Daniel?","answers":["65","25","90","120"],"correct":0,"points":10},{"id":"dc23","theme":"dc","phase":2,"text":"Qual seção contém uma revelação sobre a construção de uma casa do Senhor em Kirtland?","answers":["95","38","72","129"],"correct":0,"points":10},{"id":"dc24","theme":"dc","phase":2,"text":"Qual seção registra a dedicação do Templo de Kirtland?","answers":["109","76","89","128"],"correct":0,"points":10},{"id":"dc25","theme":"dc","phase":2,"text":"Em qual seção estão registradas aparições no Templo de Kirtland de Jesus Cristo, Moisés, Elias e Elias, o profeta?","answers":["110","84","93","132"],"correct":0,"points":10},{"id":"dc26","theme":"dc","phase":2,"text":"Quem apareceu em Doutrina e Convênios 110 para entregar as chaves da coligação de Israel?","answers":["Moisés","Abraão","Pedro","Isaías"],"correct":0,"points":10},{"id":"dc27","theme":"dc","phase":2,"text":"Qual seção apresenta uma visão sobre a redenção dos mortos recebida por Joseph F. Smith?","answers":["138","128","132","136"],"correct":0,"points":10},{"id":"dc28","theme":"dc","phase":2,"text":"Qual seção contém a revelação sobre a redenção dos mortos vista por Joseph Smith em 1836 e posteriormente acrescentada a Doutrina e Convênios?","answers":["137","110","124","131"],"correct":0,"points":10},{"id":"dc29","theme":"dc","phase":2,"text":"Qual seção contém instruções sobre o batismo pelos mortos e a importância de registros?","answers":["128","89","101","115"],"correct":0,"points":10},{"id":"dc30","theme":"dc","phase":2,"text":"Qual seção contém a revelação que designa Nauvoo como local para construir uma casa ao nome do Senhor?","answers":["124","84","95","136"],"correct":0,"points":10},{"id":"dc31","theme":"dc","phase":3,"text":"Qual seção contém ensinamentos sobre casamento eterno e o novo e eterno convênio do casamento?","answers":["132","130","121","89"],"correct":0,"points":10},{"id":"dc32","theme":"dc","phase":3,"text":"Qual seção foi dada em 1847 para orientar o Acampamento de Israel na jornada para o oeste?","answers":["136","128","110","84"],"correct":0,"points":10},{"id":"dc33","theme":"dc","phase":3,"text":"Qual seção ensina que inteligência, ou luz da verdade, não foi criada nem feita?","answers":["93","76","88","130"],"correct":0,"points":10},{"id":"dc34","theme":"dc","phase":3,"text":"Qual seção declara que os elementos são eternos e que espírito e elemento, inseparavelmente ligados, recebem plenitude de alegria?","answers":["93","84","121","131"],"correct":0,"points":10},{"id":"dc35","theme":"dc","phase":3,"text":"Qual seção ensina que qualquer princípio de inteligência que adquirirmos nesta vida surgirá conosco na ressurreição?","answers":["130","88","89","132"],"correct":0,"points":10},{"id":"dc36","theme":"dc","phase":3,"text":"Qual seção contém a explicação de que anjos que ministram nesta Terra pertencem ou pertenceram a ela?","answers":["130","129","110","76"],"correct":0,"points":10},{"id":"dc37","theme":"dc","phase":3,"text":"Qual seção fornece instruções para distinguir mensageiros celestiais?","answers":["129","130","128","121"],"correct":0,"points":10},{"id":"dc38","theme":"dc","phase":3,"text":"Qual seção contém uma revelação sobre a ordem patriarcal do sacerdócio e uma linha de autoridade desde Adão?","answers":["107","84","20","132"],"correct":0,"points":10},{"id":"dc39","theme":"dc","phase":3,"text":"Qual seção apresenta uma organização detalhada dos quóruns e presidências do sacerdócio?","answers":["107","89","93","121"],"correct":0,"points":10},{"id":"dc40","theme":"dc","phase":3,"text":"Qual seção declara que os direitos do sacerdócio estão inseparavelmente ligados aos poderes do céu?","answers":["121","84","110","132"],"correct":0,"points":10},{"id":"dc41","theme":"dc","phase":3,"text":"Segundo Doutrina e Convênios 121, por quais princípios a influência do sacerdócio deve ser mantida?","answers":["Persuasão, longanimidade, brandura e amor não fingido","Força e compulsão","Riqueza e posição","Segredo e medo"],"correct":0,"points":10},{"id":"dc42","theme":"dc","phase":3,"text":"Qual seção registra a visão de Joseph F. Smith sobre a pregação do evangelho aos mortos?","answers":["138","137","128","132"],"correct":0,"points":10},{"id":"dc43","theme":"dc","phase":3,"text":"Qual seção registra que Joseph Smith viu seu irmão Alvin no reino celestial?","answers":["137","138","110","76"],"correct":0,"points":10},{"id":"dc44","theme":"dc","phase":3,"text":"Qual seção contém a declaração de que crianças pequenas que morrem antes da idade de responsabilidade são salvas no reino celestial?","answers":["137","68","20","84"],"correct":0,"points":10},{"id":"dc45","theme":"dc","phase":3,"text":"Qual seção encerra a edição atual de Doutrina e Convênios com a visão da redenção dos mortos de Joseph F. Smith?","answers":["138","136","137","132"],"correct":0,"points":10},{"id":"vem01","theme":"vem","phase":1,"text":"Qual conjunto de escrituras é estudado no Vem, e Segue-Me em 2026?","answers":["Velho Testamento","Novo Testamento","Livro de Mórmon","Doutrina e Convênios"],"correct":0,"points":10},{"id":"vem02","theme":"vem","phase":1,"text":"Em Moisés 1, quem aprende que é filho de Deus?","answers":["Moisés","Noé","Abraão","Enoque"],"correct":0,"points":10},{"id":"vem03","theme":"vem","phase":1,"text":"Em Moisés 1, quem tenta Moisés depois que a presença de Deus se retira?","answers":["Satanás","Faraó","Caim","Ninrode"],"correct":0,"points":10},{"id":"vem04","theme":"vem","phase":1,"text":"Em Abraão 3, o que é ensinado que existia antes da Terra?","answers":["Inteligências","Templos físicos","Nações modernas","Os oceanos"],"correct":0,"points":10},{"id":"vem05","theme":"vem","phase":1,"text":"Qual livro começa com o relato “No princípio criou Deus os céus e a terra”?","answers":["Gênesis","Êxodo","Levítico","Isaías"],"correct":0,"points":10},{"id":"vem06","theme":"vem","phase":1,"text":"Segundo Gênesis, em qual dia Deus descansou da obra da Criação?","answers":["Sétimo","Primeiro","Terceiro","Sexto"],"correct":0,"points":10},{"id":"vem07","theme":"vem","phase":1,"text":"Quem foram o primeiro homem e a primeira mulher no relato de Gênesis?","answers":["Adão e Eva","Abraão e Sara","Isaque e Rebeca","Jacó e Raquel"],"correct":0,"points":10},{"id":"vem08","theme":"vem","phase":1,"text":"Quem tentou Eva no Jardim do Éden?","answers":["A serpente/Satanás","Caim","Lúcifer disfarçado de anjo Morôni","Faraó"],"correct":0,"points":10},{"id":"vem09","theme":"vem","phase":1,"text":"Quem matou Abel?","answers":["Caim","Sete","Lameque","Enoque"],"correct":0,"points":10},{"id":"vem10","theme":"vem","phase":1,"text":"Em Moisés 6, quem é chamado pelo Senhor para pregar arrependimento?","answers":["Enoque","Noé","Abraão","Moisés"],"correct":0,"points":10},{"id":"vem11","theme":"vem","phase":1,"text":"Como é chamada a cidade do povo de Enoque que se tornou um de coração e vontade?","answers":["Sião","Jericó","Babel","Betel"],"correct":0,"points":10},{"id":"vem12","theme":"vem","phase":1,"text":"Quem construiu a arca para sobreviver ao dilúvio?","answers":["Noé","Sem","Abraão","Jafé"],"correct":0,"points":10},{"id":"vem13","theme":"vem","phase":1,"text":"Qual sinal do convênio aparece após o dilúvio?","answers":["Arco-íris","Estrela","Sarça ardente","Coluna de fogo"],"correct":0,"points":10},{"id":"vem14","theme":"vem","phase":1,"text":"O que os homens tentaram construir em Babel?","answers":["Uma torre","Um templo em Jerusalém","Uma arca","Um palácio no Egito"],"correct":0,"points":10},{"id":"vem15","theme":"vem","phase":1,"text":"Qual princípio central do Vem, e Segue-Me envolve levar o estudo do evangelho para além das reuniões da Igreja?","answers":["Fortalecer o aprendizado no lar","Estudar apenas aos domingos","Substituir as escrituras","Evitar estudo em família"],"correct":0,"points":10},{"id":"vem16","theme":"vem","phase":2,"text":"Quem recebeu o chamado para deixar sua terra e ir para uma terra que o Senhor mostraria?","answers":["Abraão","Ló","Isaque","Jacó"],"correct":0,"points":10},{"id":"vem17","theme":"vem","phase":2,"text":"Qual era o nome da esposa de Abraão?","answers":["Sara","Rebeca","Raquel","Lia"],"correct":0,"points":10},{"id":"vem18","theme":"vem","phase":2,"text":"Quem foi o filho da promessa de Abraão e Sara?","answers":["Isaque","Ismael","Esaú","Jacó"],"correct":0,"points":10},{"id":"vem19","theme":"vem","phase":2,"text":"Quem era irmão de Jacó?","answers":["Esaú","José","Benjamim","Labão"],"correct":0,"points":10},{"id":"vem20","theme":"vem","phase":2,"text":"Qual novo nome o Senhor deu a Jacó?","answers":["Israel","Judá","Efraim","Levi"],"correct":0,"points":10},{"id":"vem21","theme":"vem","phase":2,"text":"Quem recebeu sonhos que provocaram ciúme em seus irmãos?","answers":["José","Rúben","Judá","Benjamim"],"correct":0,"points":10},{"id":"vem22","theme":"vem","phase":2,"text":"Para onde José foi levado depois de ser vendido?","answers":["Egito","Canaã","Babilônia","Roma"],"correct":0,"points":10},{"id":"vem23","theme":"vem","phase":2,"text":"Quem interpretou os sonhos do faraó?","answers":["José","Moisés","Arão","Jacó"],"correct":0,"points":10},{"id":"vem24","theme":"vem","phase":2,"text":"Quem encontrou Moisés bebê num cesto no rio?","answers":["A filha do faraó","Miriã","Sara","Débora"],"correct":0,"points":10},{"id":"vem25","theme":"vem","phase":2,"text":"Por meio de qual manifestação Deus chamou Moisés?","answers":["Sarça ardente","Arco-íris","Grande vento","Estrela"],"correct":0,"points":10},{"id":"vem26","theme":"vem","phase":2,"text":"Qual evento levou o faraó finalmente a permitir a saída de Israel?","answers":["A morte dos primogênitos na décima praga","A abertura do Mar Vermelho","A queda de Jericó","A construção do tabernáculo"],"correct":0,"points":10},{"id":"vem27","theme":"vem","phase":2,"text":"Qual mar os israelitas atravessaram em terra seca?","answers":["Mar Vermelho","Mar Morto","Mar da Galileia","Mediterrâneo"],"correct":0,"points":10},{"id":"vem28","theme":"vem","phase":2,"text":"Que alimento apareceu para Israel no deserto?","answers":["Maná","Uvas gigantes","Peixes","Trigo egípcio"],"correct":0,"points":10},{"id":"vem29","theme":"vem","phase":2,"text":"Em qual monte Moisés recebeu os Dez Mandamentos?","answers":["Sinai","Carmelo","Oliveiras","Tabor"],"correct":0,"points":10},{"id":"vem30","theme":"vem","phase":2,"text":"O que Israel construiu para servir como santuário móvel no deserto?","answers":["Tabernáculo","Templo de Salomão","Sinagoga","Palácio"],"correct":0,"points":10},{"id":"vem31","theme":"vem","phase":3,"text":"Quem sucedeu Moisés na liderança dos israelitas?","answers":["Josué","Arão","Calebe","Samuel"],"correct":0,"points":10},{"id":"vem32","theme":"vem","phase":3,"text":"Qual cidade teve suas muralhas derrubadas após Israel marchar ao redor dela?","answers":["Jericó","Hebrom","Belém","Ai"],"correct":0,"points":10},{"id":"vem33","theme":"vem","phase":3,"text":"Qual mulher em Jericó ajudou os espias israelitas?","answers":["Raabe","Rute","Débora","Ana"],"correct":0,"points":10},{"id":"vem34","theme":"vem","phase":3,"text":"Qual mulher foi juíza e profetisa em Israel?","answers":["Débora","Rute","Ester","Miriã"],"correct":0,"points":10},{"id":"vem35","theme":"vem","phase":3,"text":"Qual juiz derrotou os midianitas com um pequeno exército selecionado?","answers":["Gideão","Sansão","Jefté","Eli"],"correct":0,"points":10},{"id":"vem36","theme":"vem","phase":3,"text":"Quem era conhecido por sua força extraordinária?","answers":["Sansão","Samuel","Saul","Davi"],"correct":0,"points":10},{"id":"vem37","theme":"vem","phase":3,"text":"Qual mulher moabita demonstrou lealdade a Noemi?","answers":["Rute","Ester","Raquel","Ana"],"correct":0,"points":10},{"id":"vem38","theme":"vem","phase":3,"text":"Quem ouviu o Senhor chamá-lo quando ainda era menino e servia com Eli?","answers":["Samuel","Davi","Salomão","Saul"],"correct":0,"points":10},{"id":"vem39","theme":"vem","phase":3,"text":"Quem foi o primeiro rei de Israel?","answers":["Saul","Davi","Salomão","Samuel"],"correct":0,"points":10},{"id":"vem40","theme":"vem","phase":3,"text":"Quem derrotou Golias?","answers":["Davi","Saul","Jônatas","Samuel"],"correct":0,"points":10},{"id":"vem41","theme":"vem","phase":3,"text":"Quem sucedeu Davi como rei e pediu sabedoria ao Senhor?","answers":["Salomão","Saul","Roboão","Absalão"],"correct":0,"points":10},{"id":"vem42","theme":"vem","phase":3,"text":"Quem construiu o templo em Jerusalém durante o período da monarquia unida?","answers":["Salomão","Davi","Saul","Samuel"],"correct":0,"points":10},{"id":"vem43","theme":"vem","phase":3,"text":"Qual profeta confrontou os profetas de Baal no monte Carmelo?","answers":["Elias","Eliseu","Isaías","Jeremias"],"correct":0,"points":10},{"id":"vem44","theme":"vem","phase":3,"text":"Quem sucedeu Elias e recebeu seu manto?","answers":["Eliseu","Isaías","Amós","Oséias"],"correct":0,"points":10},{"id":"vem45","theme":"vem","phase":3,"text":"Qual prática ajuda a cumprir o propósito do Vem, e Segue-Me durante o estudo semanal?","answers":["Ler as escrituras e buscar inspiração pessoal e familiar","Apenas memorizar respostas","Estudar somente antes de provas","Evitar perguntas durante o estudo"],"correct":0,"points":10}];
+
+function loadData(){
+  const raw=localStorage.getItem(STORAGE_KEY);
+  if(raw){
+    try{
+      const existing=JSON.parse(raw);
+      if(!Array.isArray(existing.questions)) existing.questions=[];
+      const existingIds=new Set(existing.questions.map(q=>q.id));
+      seedQuestions.forEach(q=>{ if(!existingIds.has(q.id)) existing.questions.push(q); });
+      if(!existing.settings) existing.settings={penalty:5,lives:3,pass:70,streakBonus:5};
+      if(!existing.players) existing.players={};
+      if(typeof existing.currentPlayer!=='string') existing.currentPlayer='';
+      if(typeof existing.adminLogged!=='boolean') existing.adminLogged=false;
+      localStorage.setItem(STORAGE_KEY,JSON.stringify(existing));
+      return existing;
+    }catch(e){}
+  }
+  return {
+    questions:seedQuestions.map(q=>({...q,answers:[...q.answers]})),
+    settings:{penalty:5,lives:3,pass:70,streakBonus:5},
+    players:{},
+    currentPlayer:'',
+    adminLogged:false
+  };
+}
+let data=loadData();
+let currentTheme='mormon', currentPhase=1, quizItems=[], quizIndex=0, lives=3, correctCount=0, streak=0, answered=false;
+
+function save(){localStorage.setItem(STORAGE_KEY,JSON.stringify(data))}
+function el(id){return document.getElementById(id)}
+function show(view){
+  document.querySelectorAll('[id^="view-"]').forEach(s=>s.classList.add('hidden'));
+  el('view-'+view).classList.remove('hidden');
+  document.querySelectorAll('#nav button').forEach(b=>b.classList.remove('active'));
+  const active=document.querySelector(`#nav button[data-view="${view}"]`);
+  if(active) active.classList.add('active');
+  el('sidebar').classList.remove('open');
+}
+function player(){
+  if(!data.currentPlayer)return null;
+  return data.players[data.currentPlayer]||null;
+}
+function ensurePlayer(name){
+  if(!data.players[name]){
+    data.players[name]={name,score:0,medals:0,phases:0,unlocked:{mormon:1,biblia:1,dc:1,vem:1},history:[]};
+  }
+  data.currentPlayer=name; save(); updateStats();
+}
+function updateStats(){
+  const p=player();
+  el('playerLabel').textContent='Jogador: '+(p?p.name:'Visitante');
+  el('statScore').textContent=p?p.score:0;
+  el('statMedals').textContent=p?p.medals:0;
+  el('statStreak').textContent=streak;
+  el('statPhases').textContent=p?p.phases:0;
+}
+function openTheme(key){
+  if(!player()){show('player');return}
+  currentTheme=key;
+  el('themeTitle').textContent=themes[key].icon+' '+themes[key].name;
+  el('themeDesc').textContent=themes[key].desc;
+  renderPhases();
+  show('theme');
+}
+function renderPhases(){
+  const p=player(), grid=el('phaseGrid'); grid.innerHTML='';
+  for(let phase=1;phase<=4;phase++){
+    const count=data.questions.filter(q=>q.theme===currentTheme&&Number(q.phase)===phase).length;
+    const unlocked=phase<=((p&&p.unlocked[currentTheme])||1);
+    const btn=document.createElement('button');
+    btn.className='phase-card'+(!unlocked?' locked':'');
+    btn.disabled=!unlocked||count===0;
+    btn.innerHTML=`<div class="muted">${phase===4?'🏁 Desafio Final':'Fase '+phase}</div><h3>${count} pergunta(s)</h3><p class="muted">${!unlocked?'🔒 Conclua a fase anterior':count?'Toque para jogar':'Cadastre perguntas no ADM'}</p>`;
+    btn.addEventListener('click',()=>startQuiz(phase));
+    grid.appendChild(btn);
+  }
+}
+function startQuiz(phase){
+  currentPhase=phase;
+  quizItems=data.questions.filter(q=>q.theme===currentTheme&&Number(q.phase)===phase);
+  quizIndex=0; correctCount=0; streak=0; lives=Number(data.settings.lives); answered=false;
+  show('quiz'); renderQuestion(); updateStats();
+}
+function renderQuestion(){
+  if(quizIndex>=quizItems.length){finishQuiz();return}
+  const q=quizItems[quizIndex]; answered=false;
+  el('quizThemeBadge').textContent=themes[currentTheme].name;
+  el('quizPhaseBadge').textContent=currentPhase===4?'Desafio Final':'Fase '+currentPhase;
+  el('quizLivesBadge').textContent='❤️ '+lives;
+  el('quizQuestion').textContent=(quizIndex+1)+'. '+q.text;
+  el('quizFeedback').classList.add('hidden');
+  el('nextQuestion').disabled=true;
+  el('nextQuestion').dataset.mode='question';
+  el('nextQuestion').textContent='Próxima';
+  const box=el('quizAnswers'); box.innerHTML='';
+  q.answers.forEach((a,i)=>{
+    const b=document.createElement('button');
+    b.className='quiz-answer'; b.textContent=String.fromCharCode(65+i)+'. '+a;
+    b.addEventListener('click',()=>answerQuestion(i,b));
+    box.appendChild(b);
+  });
+  el('quizProgress').style.width=Math.round((quizIndex/quizItems.length)*100)+'%';
+}
+function answerQuestion(choice){
+  if(answered)return;
+  answered=true;
+  const q=quizItems[quizIndex], p=player(), ok=choice===Number(q.correct);
+  document.querySelectorAll('.quiz-answer').forEach((b,i)=>{
+    b.disabled=true;
+    if(i===Number(q.correct))b.classList.add('correct');
+    if(i===choice&&!ok)b.classList.add('wrong');
+  });
+  if(ok){
+    const pts=Number(q.points||10);
+    p.score+=pts; correctCount++; streak++;
+    let msg=`Acertou! +${pts} pontos.`;
+    if(streak>0&&streak%3===0&&Number(data.settings.streakBonus)>0){
+      p.score+=Number(data.settings.streakBonus);
+      msg+=` Bônus de sequência: +${data.settings.streakBonus}.`;
+    }
+    feedback(msg,true);
+  }else{
+    p.score=Math.max(0,p.score-Number(data.settings.penalty));
+    lives=Math.max(0,lives-1); streak=0;
+    feedback(`Resposta incorreta. -${data.settings.penalty} pontos e -1 vida.`,false);
+  }
+  save(); updateStats(); el('quizLivesBadge').textContent='❤️ '+lives;
+  if(lives>0) el('nextQuestion').disabled=false;
+  else setTimeout(finishQuiz,500);
+}
+function feedback(msg,ok){
+  const f=el('quizFeedback'); f.textContent=msg; f.className='notice '+(ok?'success':'error');
+}
+function finishQuiz(){
+  const p=player();
+  const pct=quizItems.length?Math.round((correctCount/quizItems.length)*100):0;
+  const passed=pct>=Number(data.settings.pass);
+  if(passed){
+    p.medals+=1; p.phases+=1;
+    if(currentPhase<4)p.unlocked[currentTheme]=Math.max(p.unlocked[currentTheme],currentPhase+1);
+  }
+  p.history.unshift({date:new Date().toLocaleString('pt-BR'),theme:themes[currentTheme].name,phase:currentPhase,percent:pct,passed});
+  save(); updateStats();
+  el('quizQuestion').textContent=passed?`Parabéns! Você concluiu com ${pct}% de acertos.`:`Você fez ${pct}% de acertos. São necessários ${data.settings.pass}% para avançar.`;
+  el('quizAnswers').innerHTML='';
+  el('quizFeedback').className='notice '+(passed?'success':'error');
+  el('quizFeedback').textContent=passed?(currentPhase<4?'Próxima fase desbloqueada!':'Desafio Final concluído!'):'Tente novamente para desbloquear a próxima fase.';
+  el('quizProgress').style.width='100%';
+  const next=el('nextQuestion');
+  next.disabled=false;
+  next.dataset.mode=passed && currentPhase<4 ? 'nextPhase' : 'retry';
+  next.textContent=passed && currentPhase<4 ? 'Ir para próxima fase' : (passed ? 'Voltar ao tema' : 'Tentar fase novamente');
+}
+function renderRanking(){
+  const rows=Object.values(data.players).sort((a,b)=>b.score-a.score);
+  el('rankingBody').innerHTML=rows.length?rows.map((p,i)=>`<tr><td>${i+1}º</td><td>${escapeHtml(p.name)}</td><td>${p.score}</td><td>${p.medals}</td><td>${p.phases}</td></tr>`).join(''):'<tr><td colspan="5">Nenhum jogador cadastrado.</td></tr>';
+}
+function renderHistory(){
+  const p=player();
+  el('historyList').innerHTML=(!p||!p.history.length)?'<p class="muted">Nenhuma fase concluída ainda.</p>':p.history.map(h=>`<div class="card" style="margin-bottom:10px"><strong>${escapeHtml(h.theme)} — ${h.phase===4?'Desafio Final':'Fase '+h.phase}</strong><div class="muted">${escapeHtml(h.date)} • ${h.percent}% • ${h.passed?'Aprovado':'Não aprovado'}</div></div>`).join('');
+}
+function renderAdminQuestions(){
+  const filter=el('adminFilter').value;
+  const list=data.questions.filter(q=>filter==='all'||q.theme===filter);
+  el('questionsBody').innerHTML=list.length?list.map(q=>`<tr><td>${themes[q.theme]?.name||q.theme}</td><td>${q.phase===4?'Final':q.phase}</td><td>${escapeHtml(q.text)}</td><td>${escapeHtml(q.answers[q.correct])}</td><td><div class="actions"><button class="btn btn-secondary" data-edit="${q.id}">Editar</button><button class="btn btn-danger" data-del="${q.id}">Excluir</button></div></td></tr>`).join(''):'<tr><td colspan="5">Nenhuma pergunta cadastrada.</td></tr>';
+  document.querySelectorAll('[data-edit]').forEach(b=>b.addEventListener('click',()=>editQuestion(b.dataset.edit)));
+  document.querySelectorAll('[data-del]').forEach(b=>b.addEventListener('click',()=>deleteQuestion(b.dataset.del)));
+}
+function editQuestion(id){
+  const q=data.questions.find(x=>x.id===id); if(!q)return;
+  el('questionId').value=q.id; el('qTheme').value=q.theme; el('qPhase').value=q.phase; el('qText').value=q.text;
+  el('qA').value=q.answers[0]; el('qB').value=q.answers[1]; el('qC').value=q.answers[2]; el('qD').value=q.answers[3];
+  el('qCorrect').value=q.correct; el('qPoints').value=q.points||10;
+  el('formTitle').textContent='Editar pergunta'; el('cancelEdit').classList.remove('hidden'); window.scrollTo({top:0,behavior:'smooth'});
+}
+function deleteQuestion(id){
+  if(!confirm('Excluir esta pergunta?'))return;
+  data.questions=data.questions.filter(q=>q.id!==id); save(); renderAdminQuestions();
+}
+function resetQuestionForm(){
+  el('questionForm').reset(); el('questionId').value=''; el('qPoints').value=10; el('formTitle').textContent='Adicionar pergunta'; el('cancelEdit').classList.add('hidden');
+}
+function loadSettings(){
+  el('settingPenalty').value=data.settings.penalty; el('settingLives').value=data.settings.lives; el('settingPass').value=data.settings.pass; el('settingStreak').value=data.settings.streakBonus;
+}
+function escapeHtml(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
+
+document.querySelectorAll('[data-theme]').forEach(b=>b.addEventListener('click',()=>openTheme(b.dataset.theme)));
+document.querySelectorAll('#nav [data-view]').forEach(b=>b.addEventListener('click',()=>{
+  const v=b.dataset.view;
+  if(v==='ranking'){renderRanking();show('ranking')}
+  else if(v==='history'){if(!player())show('player');else{renderHistory();show('history')}}
+  else if(v==='adminLogin'){data.adminLogged? (renderAdminQuestions(),loadSettings(),show('admin')):show('adminLogin')}
+  else show(v);
+}));
+
+el('playerForm').addEventListener('submit',e=>{e.preventDefault();const name=el('playerName').value.trim();if(name){ensurePlayer(name);show('home')}});
+el('changePlayer').addEventListener('click',()=>show('player'));
+el('nextQuestion').addEventListener('click',()=>{
+  const btn=el('nextQuestion');
+  if(btn.dataset.mode==='nextPhase'){
+    btn.dataset.mode='question'; btn.textContent='Próxima';
+    startQuiz(currentPhase+1); return;
+  }
+  if(btn.dataset.mode==='retry'){
+    const passedText=el('quizFeedback').textContent.includes('Desafio Final concluído');
+    btn.dataset.mode='question'; btn.textContent='Próxima';
+    if(passedText) openTheme(currentTheme); else startQuiz(currentPhase);
+    return;
+  }
+  quizIndex++; renderQuestion();
+});
+el('leaveQuiz').addEventListener('click',()=>openTheme(currentTheme));
+el('mobileMenu').addEventListener('click',()=>el('sidebar').classList.toggle('open'));
+
+el('adminLoginForm').addEventListener('submit',e=>{
+  e.preventDefault();
+  if(el('adminUser').value===ADMIN_USER&&el('adminPass').value===ADMIN_PASS){
+    data.adminLogged=true; save(); el('adminLoginMsg').classList.add('hidden'); renderAdminQuestions(); loadSettings(); show('admin');
+  }else{
+    el('adminLoginMsg').textContent='Usuário ou senha incorretos.'; el('adminLoginMsg').className='notice error';
+  }
+});
+el('adminLogout').addEventListener('click',()=>{data.adminLogged=false;save();show('home')});
+el('questionForm').addEventListener('submit',e=>{
+  e.preventDefault();
+  const id=el('questionId').value;
+  const q={
+    id:id||('q'+Date.now()), theme:el('qTheme').value, phase:Number(el('qPhase').value),
+    text:el('qText').value.trim(), answers:[el('qA').value.trim(),el('qB').value.trim(),el('qC').value.trim(),el('qD').value.trim()],
+    correct:Number(el('qCorrect').value), points:Number(el('qPoints').value||10)
+  };
+  if(id){const i=data.questions.findIndex(x=>x.id===id); if(i>=0)data.questions[i]=q}
+  else data.questions.push(q);
+  save(); renderAdminQuestions(); resetQuestionForm();
+  el('questionMsg').textContent='Pergunta salva com sucesso.'; el('questionMsg').className='notice success';
+  setTimeout(()=>el('questionMsg').classList.add('hidden'),2200);
+});
+el('cancelEdit').addEventListener('click',resetQuestionForm);
+el('adminFilter').addEventListener('change',renderAdminQuestions);
+el('saveSettings').addEventListener('click',()=>{
+  data.settings.penalty=Math.max(0,Number(el('settingPenalty').value||0));
+  data.settings.lives=Math.max(1,Number(el('settingLives').value||1));
+  data.settings.pass=Math.min(100,Math.max(1,Number(el('settingPass').value||70)));
+  data.settings.streakBonus=Math.max(0,Number(el('settingStreak').value||0));
+  save(); alert('Regras salvas com sucesso.');
+});
+
+updateStats();
+if(!data.currentPlayer)show('player'); else show('home');
+</script>
+</body>
+</html>
