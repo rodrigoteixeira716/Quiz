@@ -135,7 +135,7 @@ th{font-size:12px;color:var(--muted);text-transform:uppercase}
         <span class="player-name" id="playerLabel">Jogador: Visitante</span>
       </div>
       <div class="actions">
-        <button class="btn btn-secondary" id="changePlayer">Trocar jogador</button>
+        <button class="btn btn-secondary" id="profileBtn">👤 Meu perfil</button>
       </div>
     </div>
 
@@ -203,13 +203,45 @@ th{font-size:12px;color:var(--muted);text-transform:uppercase}
 
     <section id="view-player" class="hidden">
       <div class="card login-box">
-        <h2 class="section-title">Identificação do jogador</h2>
-        <p class="section-desc">Digite seu nome para acessar os temas, jogar e entrar no ranking. Não pedimos e-mail, telefone ou outros dados pessoais.</p>
-<div class="notice" style="margin-bottom:14px">🔐 Os temas ficam liberados somente após a identificação do jogador.</div>
-        <form id="playerForm" class="form-grid">
-          <label>Nome do jogador<input id="playerName" required maxlength="40" placeholder="Ex.: Rodrigo"></label>
-          <button class="btn btn-primary" type="submit">Entrar no Quiz</button>
+        <h2 class="section-title">Bem-vindo ao QUIZ</h2>
+        <p class="section-desc">Cada jogador possui um perfil próprio. O nome pode se repetir, pois o sistema usa um identificador único internamente.</p>
+
+        <div id="continuePlayerBox" class="notice hidden" style="margin-bottom:16px"></div>
+
+        <div class="grid2" style="margin-bottom:18px">
+          <button class="btn btn-primary" id="showCreatePlayer">➕ Criar novo jogador</button>
+          <button class="btn btn-outline" id="showLoginPlayer">🔑 Entrar em outro jogador</button>
+        </div>
+
+        <form id="createPlayerForm" class="form-grid hidden">
+          <h3>Criar perfil</h3>
+          <label>Nome ou apelido<input id="newPlayerName" required maxlength="40" autocomplete="off" placeholder="Ex.: Rodrigo"></label>
+          <label>Crie um PIN de 4 dígitos<input id="newPlayerPin" required type="password" inputmode="numeric" maxlength="4" pattern="[0-9]{4}" autocomplete="new-password" placeholder="••••"></label>
+          <label>Confirme o PIN<input id="confirmPlayerPin" required type="password" inputmode="numeric" maxlength="4" pattern="[0-9]{4}" autocomplete="new-password" placeholder="••••"></label>
+          <label style="display:flex;gap:8px;align-items:center"><input id="rememberNewPlayer" type="checkbox" style="width:auto"> Lembrar neste aparelho</label>
+          <button class="btn btn-primary" type="submit">Criar perfil e entrar</button>
+          <div id="createPlayerMsg" class="notice hidden"></div>
         </form>
+
+        <form id="loginPlayerForm" class="form-grid hidden">
+          <h3>Entrar em um perfil</h3>
+          <label>Escolha o jogador<select id="loginPlayerSelect" required></select></label>
+          <label>PIN de 4 dígitos<input id="loginPlayerPin" required type="password" inputmode="numeric" maxlength="4" pattern="[0-9]{4}" autocomplete="current-password" placeholder="••••"></label>
+          <label style="display:flex;gap:8px;align-items:center"><input id="rememberLoginPlayer" type="checkbox" style="width:auto"> Lembrar neste aparelho</label>
+          <button class="btn btn-primary" type="submit">Entrar no QUIZ</button>
+          <div id="loginPlayerMsg" class="notice hidden"></div>
+        </form>
+      </div>
+    </section>
+
+    <section id="view-profile" class="hidden">
+      <div class="card login-box">
+        <h2 class="section-title">👤 Meu perfil</h2>
+        <div id="profileDetails"></div>
+        <div class="actions" style="margin-top:18px">
+          <button class="btn btn-primary" id="profileBack">Voltar ao QUIZ</button>
+          <button class="btn btn-danger" id="logoutPlayer">Sair do perfil</button>
+        </div>
       </div>
     </section>
 
@@ -8795,18 +8827,45 @@ function player(){
   if(!data.currentPlayer)return null;
   return data.players[data.currentPlayer]||null;
 }
-function ensurePlayer(name){
-  name=name.trim().replace(/\s+/g,' ');
-  if(!data.players[name]){
-    data.players[name]={name,score:0,medals:0,phases:0,unlocked:{mormon:1,biblia:1,dc:1,vem:1},history:[],accessCount:0,firstAccess:'',lastAccess:''};
-  }
-  const p=data.players[name];
-  if(typeof p.accessCount!=='number') p.accessCount=0;
+function makePlayerId(){
+  return 'player_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,9);
+}
+function migratePlayersToIds(){
+  const old=data.players||{}, migrated={};
+  Object.entries(old).forEach(([key,p])=>{
+    const id=(p&&p.id)||((key||'').startsWith('player_')?key:makePlayerId());
+    const obj={...p,id,name:(p&&p.name)||key};
+    if(!obj.pin) obj.pin='';
+    migrated[id]=obj;
+    if(data.currentPlayer===key) data.currentPlayer=id;
+  });
+  data.players=migrated;
+  save();
+}
+function recordAccess(p){
+  if(typeof p.accessCount!=='number')p.accessCount=0;
   const now=new Date().toISOString();
   p.accessCount++;
-  if(!p.firstAccess) p.firstAccess=now;
+  if(!p.firstAccess)p.firstAccess=now;
   p.lastAccess=now;
-  data.currentPlayer=name; save(); updateStats();
+  localStorage.setItem('quizLastPlayerId',p.id);
+}
+function createPlayer(name,pin,remember){
+  const id=makePlayerId();
+  const p={id,name:name.trim().replace(/\s+/g,' '),pin,score:0,medals:0,phases:0,
+    unlocked:{mormon:1,biblia:1,dc:1,vem:1},history:[],accessCount:0,firstAccess:'',lastAccess:''};
+  data.players[id]=p; data.currentPlayer=id; recordAccess(p);
+  if(remember)localStorage.setItem('quizRememberPlayerId',id);
+  else localStorage.removeItem('quizRememberPlayerId');
+  save(); updateStats(); return p;
+}
+function loginPlayer(id,pin,remember){
+  const p=data.players[id];
+  if(!p || String(p.pin)!==String(pin))return false;
+  data.currentPlayer=id; recordAccess(p);
+  if(remember)localStorage.setItem('quizRememberPlayerId',id);
+  else localStorage.removeItem('quizRememberPlayerId');
+  save(); updateStats(); return true;
 }
 function updateStats(){
   const p=player();
@@ -8818,9 +8877,47 @@ function updateStats(){
 }
 function requirePlayer(){
   if(player()) return true;
-  show('player');
-  setTimeout(()=>el('playerName').focus(),50);
-  return false;
+  renderPlayerEntry(); show('player'); return false;
+}
+function renderPlayerEntry(){
+  const players=Object.values(data.players||{});
+  const sel=el('loginPlayerSelect');
+  if(sel) sel.innerHTML=players.length
+    ? players.sort((a,b)=>(b.lastAccess||'').localeCompare(a.lastAccess||''))
+      .map(p=>`<option value="${p.id}">${escapeHtml(p.name)} • ${String(p.id).slice(-5)}</option>`).join('')
+    : '<option value="">Nenhum perfil criado</option>';
+  const lastId=localStorage.getItem('quizLastPlayerId');
+  const last=lastId&&data.players[lastId];
+  const box=el('continuePlayerBox');
+  if(box){
+    if(last){
+      box.classList.remove('hidden');
+      box.innerHTML=`<strong>👤 Continuar como ${escapeHtml(last.name)}</strong>
+        <div class="muted" style="margin:6px 0 10px">Digite o PIN para continuar neste perfil.</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <input id="continuePin" type="password" inputmode="numeric" maxlength="4" placeholder="PIN ••••" style="max-width:150px">
+          <button class="btn btn-primary" id="continuePlayerBtn">Continuar</button>
+        </div>
+        <div id="continueMsg" class="muted" style="margin-top:8px"></div>`;
+      el('continuePlayerBtn').onclick=()=>{
+        const pin=el('continuePin').value;
+        if(loginPlayer(last.id,pin,false)){show('home')}
+        else el('continueMsg').textContent='PIN incorreto.';
+      };
+    }else box.classList.add('hidden');
+  }
+}
+function renderProfile(){
+  const p=player(); if(!p)return;
+  el('profileDetails').innerHTML=`
+    <div class="notice"><strong>${escapeHtml(p.name)}</strong><br>
+    <span class="muted">ID do jogador: ${escapeHtml(p.id)}</span></div>
+    <div class="grid2" style="margin-top:14px">
+      <div class="card stat"><div class="label">Pontos</div><div class="value">${p.score||0}</div></div>
+      <div class="card stat"><div class="label">Medalhas</div><div class="value">${p.medals||0}</div></div>
+      <div class="card stat"><div class="label">Fases concluídas</div><div class="value">${p.phases||0}</div></div>
+      <div class="card stat"><div class="label">Partidas</div><div class="value">${(p.history||[]).length}</div></div>
+    </div>`;
 }
 function formatAccessDate(value){
   if(!value)return '—';
@@ -9043,8 +9140,28 @@ document.querySelectorAll('#nav [data-view]').forEach(b=>b.addEventListener('cli
   else show(v);
 }));
 
-el('playerForm').addEventListener('submit',e=>{e.preventDefault();const name=el('playerName').value.trim();if(name){ensurePlayer(name);sessionStorage.setItem('quizSessionAccess','1');show('home')}});
-el('changePlayer').addEventListener('click',()=>{sessionStorage.removeItem('quizSessionAccess');data.currentPlayer='';save();updateStats();el('playerName').value='';show('player')});
+el('showCreatePlayer').addEventListener('click',()=>{el('createPlayerForm').classList.remove('hidden');el('loginPlayerForm').classList.add('hidden')});
+el('showLoginPlayer').addEventListener('click',()=>{renderPlayerEntry();el('loginPlayerForm').classList.remove('hidden');el('createPlayerForm').classList.add('hidden')});
+el('createPlayerForm').addEventListener('submit',e=>{
+  e.preventDefault();
+  const name=el('newPlayerName').value.trim(), pin=el('newPlayerPin').value, confirmPin=el('confirmPlayerPin').value;
+  const msg=el('createPlayerMsg'); msg.classList.remove('hidden');
+  if(name.length<2){msg.textContent='Informe um nome ou apelido.';return}
+  if(!/^\d{4}$/.test(pin)){msg.textContent='O PIN deve ter exatamente 4 números.';return}
+  if(pin!==confirmPin){msg.textContent='Os PINs não conferem.';return}
+  createPlayer(name,pin,el('rememberNewPlayer').checked); show('home');
+});
+el('loginPlayerForm').addEventListener('submit',e=>{
+  e.preventDefault();
+  const ok=loginPlayer(el('loginPlayerSelect').value,el('loginPlayerPin').value,el('rememberLoginPlayer').checked);
+  const msg=el('loginPlayerMsg');
+  if(ok){show('home')}else{msg.classList.remove('hidden');msg.textContent='Jogador ou PIN incorreto.'}
+});
+el('profileBtn').addEventListener('click',()=>{if(!player()){renderPlayerEntry();show('player');return}renderProfile();show('profile')});
+el('profileBack').addEventListener('click',()=>show('home'));
+el('logoutPlayer').addEventListener('click',()=>{
+  data.currentPlayer=''; localStorage.removeItem('quizRememberPlayerId'); save(); updateStats(); renderPlayerEntry(); show('player');
+});
 el('nextQuestion').addEventListener('click',()=>{
   const btn=el('nextQuestion');
   if(btn.dataset.mode==='nextPhase'){
@@ -9126,10 +9243,13 @@ el('celebrateClose').addEventListener('click',()=>{
   openTheme(currentTheme);
 });
 
-updateStats();
-if(!sessionStorage.getItem('quizSessionAccess')){
-  data.currentPlayer=''; save(); updateStats(); show('player');
-}else if(!data.currentPlayer){show('player')}else{show('home')}
+migratePlayersToIds();
+const rememberedId=localStorage.getItem('quizRememberPlayerId');
+if(rememberedId && data.players[rememberedId]){
+  data.currentPlayer=rememberedId; save(); updateStats(); show('home');
+}else{
+  data.currentPlayer=''; save(); updateStats(); renderPlayerEntry(); show('player');
+}
 </script>
 
 <script>
