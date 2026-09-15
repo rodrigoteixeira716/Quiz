@@ -188,7 +188,7 @@ th{font-size:12px;color:var(--muted);text-transform:uppercase}
     <section id="view-ranking" class="hidden">
       <div class="card">
         <h2 class="section-title">Ranking geral</h2>
-        <p class="section-desc">Classificação dos jogadores salvos neste navegador.</p>
+        <p class="section-desc">Classificação geral dos jogadores salva no Supabase.</p>
         <div class="table-wrap"><table><thead><tr><th>Posição</th><th>Jogador</th><th>Pontos</th><th>Medalhas</th><th>Fases</th></tr></thead><tbody id="rankingBody"></tbody></table></div>
       </div>
     </section>
@@ -271,7 +271,7 @@ th{font-size:12px;color:var(--muted);text-transform:uppercase}
         </div>
         <div class="card" style="margin-bottom:14px">
           <h3 class="section-title">Controle de acesso</h3>
-          <p class="section-desc">Contagem local provisória. Com o Supabase, depois poderemos contabilizar todos os aparelhos.</p>
+          <p class="section-desc">Dados dos jogadores armazenados na nuvem pelo Supabase.</p>
           <div class="table-wrap"><table><thead><tr><th>Jogador</th><th>Acessos</th><th>Partidas</th><th>Fases concluídas</th><th>Último tema</th><th>Último acesso</th><th>Ações</th></tr></thead><tbody id="accessBody"></tbody></table></div>
         </div>
         <div class="grid2">
@@ -8810,478 +8810,47 @@ function loadData(){
     adminLogged:false
   };
 }
-let data=loadData();
-let currentTheme='mormon', currentPhase=1, quizItems=[], quizIndex=0, lives=3, correctCount=0, streak=0, answered=false;
-
-function save(){localStorage.setItem(STORAGE_KEY,JSON.stringify(data))}
+let data={settings:{penalty:0,lives:3,pass:70,streakBonus:0},adminLogged:false};
+let currentTheme='mormon',currentPhase=1,quizItems=[],quizIndex=0,lives=3,correctCount=0,streak=0,answered=false;
+let currentPlayer=null,currentPin='',currentProgress={mormon:1,biblia:1,dc:1,vem:1},attemptAnswers=[];
+const SUPABASE_URL='https://bazzsgtdgbyxyfhlvffo.supabase.co';
+const SUPABASE_KEY='sb_publishable_tLtfSQ6WD3Y6WuRnYe9Grg_dnaIcr07';
 function el(id){return document.getElementById(id)}
-function show(view){
-  document.querySelectorAll('[id^="view-"]').forEach(s=>s.classList.add('hidden'));
-  el('view-'+view).classList.remove('hidden');
-  document.querySelectorAll('#nav button').forEach(b=>b.classList.remove('active'));
-  const active=document.querySelector(`#nav button[data-view="${view}"]`);
-  if(active) active.classList.add('active');
-  el('sidebar').classList.remove('open');
-}
-function player(){
-  if(!data.currentPlayer)return null;
-  return data.players[data.currentPlayer]||null;
-}
-function makePlayerId(){
-  return 'player_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,9);
-}
-function migratePlayersToIds(){
-  const old=data.players||{}, migrated={};
-  Object.entries(old).forEach(([key,p])=>{
-    const id=(p&&p.id)||((key||'').startsWith('player_')?key:makePlayerId());
-    const obj={...p,id,name:(p&&p.name)||key};
-    if(!obj.pin) obj.pin='';
-    migrated[id]=obj;
-    if(data.currentPlayer===key) data.currentPlayer=id;
-  });
-  data.players=migrated;
-  save();
-}
-function recordAccess(p){
-  if(typeof p.accessCount!=='number')p.accessCount=0;
-  const now=new Date().toISOString();
-  p.accessCount++;
-  if(!p.firstAccess)p.firstAccess=now;
-  p.lastAccess=now;
-  localStorage.setItem('quizLastPlayerId',p.id);
-}
-function createPlayer(name,pin,remember){
-  const id=makePlayerId();
-  const p={id,name:name.trim().replace(/\s+/g,' '),pin,score:0,medals:0,phases:0,
-    unlocked:{mormon:1,biblia:1,dc:1,vem:1},history:[],accessCount:0,firstAccess:'',lastAccess:''};
-  data.players[id]=p; data.currentPlayer=id; recordAccess(p);
-  if(remember)localStorage.setItem('quizRememberPlayerId',id);
-  else localStorage.removeItem('quizRememberPlayerId');
-  save(); updateStats(); return p;
-}
-function loginPlayer(id,pin,remember){
-  const p=data.players[id];
-  if(!p || String(p.pin)!==String(pin))return false;
-  data.currentPlayer=id; recordAccess(p);
-  if(remember)localStorage.setItem('quizRememberPlayerId',id);
-  else localStorage.removeItem('quizRememberPlayerId');
-  save(); updateStats(); return true;
-}
-function updateStats(){
-  const p=player();
-  el('playerLabel').textContent='Jogador: '+(p?p.name:'Visitante');
-  el('statScore').textContent=p?p.score:0;
-  el('statMedals').textContent=p?p.medals:0;
-  el('statStreak').textContent=streak;
-  el('statPhases').textContent=p?p.phases:0;
-}
-function requirePlayer(){
-  if(player()) return true;
-  renderPlayerEntry(); show('player'); return false;
-}
-function renderPlayerEntry(){
-  const players=Object.values(data.players||{});
-  const sel=el('loginPlayerSelect');
-  if(sel) sel.innerHTML=players.length
-    ? players.sort((a,b)=>(b.lastAccess||'').localeCompare(a.lastAccess||''))
-      .map(p=>`<option value="${p.id}">${escapeHtml(p.name)} • ${String(p.id).slice(-5)}</option>`).join('')
-    : '<option value="">Nenhum perfil criado</option>';
-  const lastId=localStorage.getItem('quizLastPlayerId');
-  const last=lastId&&data.players[lastId];
-  const box=el('continuePlayerBox');
-  if(box){
-    if(last){
-      box.classList.remove('hidden');
-      box.innerHTML=`<strong>👤 Continuar como ${escapeHtml(last.name)}</strong>
-        <div class="muted" style="margin:6px 0 10px">Digite o PIN para continuar neste perfil.</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <input id="continuePin" type="password" inputmode="numeric" maxlength="4" placeholder="PIN ••••" style="max-width:150px">
-          <button class="btn btn-primary" id="continuePlayerBtn">Continuar</button>
-        </div>
-        <div id="continueMsg" class="muted" style="margin-top:8px"></div>`;
-      el('continuePlayerBtn').onclick=()=>{
-        const pin=el('continuePin').value;
-        if(loginPlayer(last.id,pin,false)){show('home')}
-        else el('continueMsg').textContent='PIN incorreto.';
-      };
-    }else box.classList.add('hidden');
-  }
-}
-function renderProfile(){
-  const p=player(); if(!p)return;
-  el('profileDetails').innerHTML=`
-    <div class="notice"><strong>${escapeHtml(p.name)}</strong><br>
-    <span class="muted">ID do jogador: ${escapeHtml(p.id)}</span></div>
-    <div class="grid2" style="margin-top:14px">
-      <div class="card stat"><div class="label">Pontos</div><div class="value">${p.score||0}</div></div>
-      <div class="card stat"><div class="label">Medalhas</div><div class="value">${p.medals||0}</div></div>
-      <div class="card stat"><div class="label">Fases concluídas</div><div class="value">${p.phases||0}</div></div>
-      <div class="card stat"><div class="label">Partidas</div><div class="value">${(p.history||[]).length}</div></div>
-    </div>`;
-}
-function formatAccessDate(value){
-  if(!value)return '—';
-  try{return new Date(value).toLocaleString('pt-BR')}catch(e){return '—'}
-}
-function renderAccessControl(){
-  const players=Object.values(data.players||{});
-  const total=players.reduce((sum,p)=>sum+(Number(p.accessCount)||0),0);
-  if(el('accessPlayers')) el('accessPlayers').textContent=players.length;
-  if(el('accessTotal')) el('accessTotal').textContent=total;
-  if(el('accessCurrent')) el('accessCurrent').textContent=player()?player().name:'—';
-  if(el('accessBody')) el('accessBody').innerHTML=players.length
-    ? players.sort((a,b)=>(b.lastAccess||'').localeCompare(a.lastAccess||'')).map(p=>{
-        const games=(p.history||[]).length;
-        const completed=Number(p.phases)||0;
-        const themeName=p.lastTheme&&themes[p.lastTheme]?themes[p.lastTheme].name:'—';
-        return `<tr><td>${escapeHtml(p.name)}</td><td>${Number(p.accessCount)||0}</td><td>${games}</td><td>${completed}</td><td>${escapeHtml(themeName)}</td><td>${formatAccessDate(p.lastAccess)}</td>
-<td><div style="display:flex;gap:6px;flex-wrap:wrap">
-<button class="btn btn-secondary" onclick="adminEditPlayer('${p.id}')">✏️ Editar</button>
-<button class="btn btn-danger" onclick="adminDeletePlayer('${p.id}')">🗑️ Excluir</button>
-</div></td></tr>`;
-      }).join('')
-    : '<tr><td colspan="7" class="muted">Nenhum acesso registrado ainda.</td></tr>';
-}
-
-function adminEditPlayer(id){
-  if(!data.adminLogged){alert('Acesso restrito ao administrador.');return}
-  const p=data.players[id]; if(!p)return;
-  const newName=prompt('Nome ou apelido do jogador:',p.name);
-  if(newName===null)return;
-  const cleanName=newName.trim().replace(/\s+/g,' ');
-  if(cleanName.length<2){alert('Informe um nome válido.');return}
-  const newPin=prompt('Novo PIN de 4 dígitos.\\nDeixe em branco para manter o PIN atual:','');
-  if(newPin===null)return;
-  if(newPin!=='' && !/^\d{4}$/.test(newPin)){alert('O PIN deve ter exatamente 4 números.');return}
-  p.name=cleanName;
-  if(newPin!=='')p.pin=newPin;
-  save(); updateStats(); renderAccessControl(); renderPlayerEntry();
-  alert(newPin!==''?'Perfil e PIN atualizados.':'Nome do perfil atualizado. O PIN foi mantido.');
-}
-function adminDeletePlayer(id){
-  if(!data.adminLogged){alert('Acesso restrito ao administrador.');return}
-  const p=data.players[id]; if(!p)return;
-  const ok=confirm(`Excluir definitivamente o perfil "${p.name}"?\n\nO progresso, pontos, medalhas e histórico desse jogador também serão apagados deste aparelho.`);
-  if(!ok)return;
-  delete data.players[id];
-  if(data.currentPlayer===id)data.currentPlayer='';
-  if(localStorage.getItem('quizLastPlayerId')===id)localStorage.removeItem('quizLastPlayerId');
-  if(localStorage.getItem('quizRememberPlayerId')===id)localStorage.removeItem('quizRememberPlayerId');
-  save(); updateStats(); renderAccessControl(); renderPlayerEntry();
-  alert('Perfil excluído.');
-}
-
-function openTheme(key){
-  if(!requirePlayer())return
-  currentTheme=key;
-  el('themeTitle').textContent=themes[key].icon+' '+themes[key].name;
-  el('themeDesc').textContent=themes[key].desc;
-  renderPhases();
-  show('theme');
-}
-function renderPhases(){
-  const p=player(), grid=el('phaseGrid'); grid.innerHTML='';
-  for(let phase=1;phase<=10;phase++){
-    const count=data.questions.filter(q=>q.theme===currentTheme&&Number(q.phase)===phase).length;
-    const unlocked=phase<=((p&&p.unlocked[currentTheme])||1);
-    const btn=document.createElement('button');
-    btn.className='phase-card'+(!unlocked?' locked':'');
-    btn.disabled=!unlocked||count===0;
-    const difficulty=phase<=3?'🟢 Fácil':phase<=6?'🟡 Intermediário':phase<=9?'🔴 Difícil':'🏆 Final';
-    btn.innerHTML=`<div class="muted">${phase===10?'🏆 Desafio Final':'Fase '+phase} • ${difficulty}</div><h3>${count} pergunta(s)</h3><p class="muted">${!unlocked?'🔒 Conclua a fase anterior':count?'Toque para jogar':'Cadastre 15 perguntas no ADM'}</p>`;
-    btn.addEventListener('click',()=>startQuiz(phase));
-    grid.appendChild(btn);
-  }
-}
-
-function shuffledQuestion(q){
-  const items=q.answers.map((answer,index)=>({answer,isCorrect:index===Number(q.correct)}));
-  for(let i=items.length-1;i>0;i--){
-    const j=Math.floor(Math.random()*(i+1));
-    [items[i],items[j]]=[items[j],items[i]];
-  }
-  return {
-    ...q,
-    answers:items.map(x=>x.answer),
-    correct:items.findIndex(x=>x.isCorrect)
-  };
-}
-
-function startQuiz(phase){
-  if(!requirePlayer())return;
-  const activePlayer=player();
-  if(activePlayer){activePlayer.lastTheme=currentTheme;activePlayer.lastPlayedAt=new Date().toISOString();save();}
-  currentPhase=phase;
-  quizItems=data.questions.filter(q=>q.theme===currentTheme&&Number(q.phase)===phase).map(shuffledQuestion);
-  for(let i=quizItems.length-1;i>0;i--){
-    const j=Math.floor(Math.random()*(i+1));
-    [quizItems[i],quizItems[j]]=[quizItems[j],quizItems[i]];
-  }
-  quizIndex=0; correctCount=0; streak=0; lives=Number(data.settings.lives); answered=false;
-  show('quiz'); renderQuestion(); updateStats();
-}
-function renderQuestion(){
-  if(quizIndex>=quizItems.length){finishQuiz();return}
-  const q=quizItems[quizIndex]; answered=false;
-  el('quizThemeBadge').textContent=themes[currentTheme].name;
-  el('quizPhaseBadge').textContent=currentPhase===10?'Desafio Final':'Fase '+currentPhase;
-  el('quizLivesBadge').textContent='❤️ '+lives;
-  el('quizQuestion').textContent=(quizIndex+1)+'. '+q.text;
-  el('quizFeedback').classList.add('hidden');
-  el('nextQuestion').disabled=true;
-  el('nextQuestion').dataset.mode='question';
-  el('nextQuestion').textContent='Próxima';
-  const box=el('quizAnswers'); box.innerHTML='';
-  q.answers.forEach((a,i)=>{
-    const b=document.createElement('button');
-    b.className='quiz-answer'; b.textContent=String.fromCharCode(65+i)+'. '+a;
-    b.addEventListener('click',()=>answerQuestion(i,b));
-    box.appendChild(b);
-  });
-  el('quizProgress').style.width=Math.round((quizIndex/quizItems.length)*100)+'%';
-}
-function answerQuestion(choice){
-  if(answered)return;
-  answered=true;
-  const q=quizItems[quizIndex], p=player(), ok=choice===Number(q.correct);
-  document.querySelectorAll('.quiz-answer').forEach((b,i)=>{
-    b.disabled=true;
-    if(i===Number(q.correct))b.classList.add('correct');
-    if(i===choice&&!ok)b.classList.add('wrong');
-  });
-  if(ok){
-    const pts=Number(q.points||10);
-    p.score+=pts; correctCount++; streak++;
-    let msg=`Acertou! +${pts} pontos.`;
-    if(streak>0&&streak%3===0&&Number(data.settings.streakBonus)>0){
-      p.score+=Number(data.settings.streakBonus);
-      msg+=` Bônus de sequência: +${data.settings.streakBonus}.`;
-    }
-    feedback(msg,true);
-  }else{
-    p.score=Math.max(0,p.score-Number(data.settings.penalty));
-    lives=Math.max(0,lives-1); streak=0;
-    feedback(`Resposta incorreta. -${data.settings.penalty} pontos e -1 vida.`,false);
-  }
-  save(); updateStats(); el('quizLivesBadge').textContent='❤️ '+lives;
-  if(lives>0) el('nextQuestion').disabled=false;
-  else setTimeout(finishQuiz,500);
-}
-function feedback(msg,ok){
-  const f=el('quizFeedback'); f.textContent=msg; f.className='notice '+(ok?'success':'error');
-}
-
-function launchConfetti(){
-  const layer=el('confettiLayer');
-  layer.innerHTML='';
-  const colors=['#f59e0b','#ef4444','#3b82f6','#10b981','#8b5cf6','#ec4899','#facc15'];
-  for(let i=0;i<90;i++){
-    const c=document.createElement('span');
-    c.className='confetti-piece';
-    c.style.left=(Math.random()*100)+'vw';
-    c.style.background=colors[Math.floor(Math.random()*colors.length)];
-    c.style.animationDuration=(2.8+Math.random()*2.5)+'s';
-    c.style.animationDelay=(Math.random()*.8)+'s';
-    c.style.setProperty('--drift',((Math.random()-.5)*240)+'px');
-    c.style.transform='rotate('+Math.floor(Math.random()*360)+'deg)';
-    layer.appendChild(c);
-  }
-}
-function showCelebration(pct){
-  const p=player();
-  el('celebrationSubtitle').textContent=`Você concluiu ${currentPhase===10?'o Desafio Final':'a Fase '+currentPhase} de ${themes[currentTheme].name}!`;
-  el('celebrateCorrect').textContent=correctCount+'/'+quizItems.length;
-  el('celebratePercent').textContent=pct+'%';
-  el('celebrateScore').textContent=p.score;
-  const next=el('celebrateNext');
-  if(currentPhase<10){
-    next.classList.remove('hidden');
-    next.textContent='Ir para a próxima fase';
-  }else{
-    next.classList.add('hidden');
-  }
-  el('celebrationOverlay').classList.remove('hidden');
-  launchConfetti();
-}
-function closeCelebration(){
-  el('celebrationOverlay').classList.add('hidden');
-  el('confettiLayer').innerHTML='';
-}
-
-function finishQuiz(){
-  const p=player();
-  const pct=quizItems.length?Math.round((correctCount/quizItems.length)*100):0;
-  const passed=pct>=Number(data.settings.pass);
-  if(passed){
-    p.medals+=1; p.phases+=1;
-    if(currentPhase<10)p.unlocked[currentTheme]=Math.max(p.unlocked[currentTheme],currentPhase+1);
-  }
-  p.history.unshift({date:new Date().toLocaleString('pt-BR'),theme:themes[currentTheme].name,phase:currentPhase,percent:pct,passed});
-  save(); updateStats();
-  if(passed) setTimeout(()=>showCelebration(pct),250);
-  el('quizQuestion').textContent=passed?`Parabéns! Você concluiu com ${pct}% de acertos.`:`Você fez ${pct}% de acertos. São necessários ${data.settings.pass}% para avançar.`;
-  el('quizAnswers').innerHTML='';
-  el('quizFeedback').className='notice '+(passed?'success':'error');
-  el('quizFeedback').textContent=passed?(currentPhase<10?'Próxima fase desbloqueada!':'Desafio Final concluído!'):'Tente novamente para desbloquear a próxima fase.';
-  el('quizProgress').style.width='100%';
-  const next=el('nextQuestion');
-  next.disabled=false;
-  next.dataset.mode=passed && currentPhase<10 ? 'nextPhase' : 'retry';
-  next.textContent=passed && currentPhase<10 ? 'Ir para próxima fase' : (passed ? 'Voltar ao tema' : 'Tentar fase novamente');
-}
-function renderRanking(){
-  const rows=Object.values(data.players).sort((a,b)=>b.score-a.score);
-  el('rankingBody').innerHTML=rows.length?rows.map((p,i)=>`<tr><td>${i+1}º</td><td>${escapeHtml(p.name)}</td><td>${p.score}</td><td>${p.medals}</td><td>${p.phases}</td></tr>`).join(''):'<tr><td colspan="5">Nenhum jogador cadastrado.</td></tr>';
-}
-function renderHistory(){
-  const p=player();
-  el('historyList').innerHTML=(!p||!p.history.length)?'<p class="muted">Nenhuma fase concluída ainda.</p>':p.history.map(h=>`<div class="card" style="margin-bottom:10px"><strong>${escapeHtml(h.theme)} — ${h.phase===10?'Desafio Final':'Fase '+h.phase}</strong><div class="muted">${escapeHtml(h.date)} • ${h.percent}% • ${h.passed?'Aprovado':'Não aprovado'}</div></div>`).join('');
-}
-function renderAdminQuestions(){
-  const filter=el('adminFilter').value;
-  const list=data.questions.filter(q=>filter==='all'||q.theme===filter);
-  el('questionsBody').innerHTML=list.length?list.map(q=>`<tr><td>${themes[q.theme]?.name||q.theme}</td><td>${q.phase===10?'Final':q.phase}</td><td>${escapeHtml(q.text)}</td><td>${escapeHtml(q.answers[q.correct])}</td><td><div class="actions"><button class="btn btn-secondary" data-edit="${q.id}">Editar</button><button class="btn btn-danger" data-del="${q.id}">Excluir</button></div></td></tr>`).join(''):'<tr><td colspan="5">Nenhuma pergunta cadastrada.</td></tr>';
-  document.querySelectorAll('[data-edit]').forEach(b=>b.addEventListener('click',()=>editQuestion(b.dataset.edit)));
-  document.querySelectorAll('[data-del]').forEach(b=>b.addEventListener('click',()=>deleteQuestion(b.dataset.del)));
-}
-function editQuestion(id){
-  const q=data.questions.find(x=>x.id===id); if(!q)return;
-  el('questionId').value=q.id; el('qTheme').value=q.theme; el('qPhase').value=q.phase; el('qText').value=q.text;
-  el('qA').value=q.answers[0]; el('qB').value=q.answers[1]; el('qC').value=q.answers[2]; el('qD').value=q.answers[3];
-  el('qCorrect').value=q.correct; el('qPoints').value=q.points||10;
-  el('formTitle').textContent='Editar pergunta'; el('cancelEdit').classList.remove('hidden'); window.scrollTo({top:0,behavior:'smooth'});
-}
-function deleteQuestion(id){
-  if(!confirm('Excluir esta pergunta?'))return;
-  data.questions=data.questions.filter(q=>q.id!==id); save(); renderAdminQuestions();
-}
-function resetQuestionForm(){
-  el('questionForm').reset(); el('questionId').value=''; el('qPoints').value=10; el('formTitle').textContent='Adicionar pergunta'; el('cancelEdit').classList.add('hidden');
-}
-function loadSettings(){
-  el('settingPenalty').value=data.settings.penalty; el('settingLives').value=data.settings.lives; el('settingPass').value=data.settings.pass; el('settingStreak').value=data.settings.streakBonus;
-}
-function escapeHtml(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
-
-document.querySelectorAll('[data-theme]').forEach(b=>b.addEventListener('click',()=>openTheme(b.dataset.theme)));
-document.querySelectorAll('#nav [data-view]').forEach(b=>b.addEventListener('click',()=>{
-  const v=b.dataset.view;
-  if(v==='ranking'){renderRanking();show('ranking')}
-  else if(v==='history'){if(!player())show('player');else{renderHistory();show('history')}}
-  else if(v==='adminLogin'){data.adminLogged? (renderAdminQuestions(),loadSettings(),renderAccessControl(),show('admin')):show('adminLogin')}
-  else show(v);
-}));
-
-el('showCreatePlayer').addEventListener('click',()=>{el('createPlayerForm').classList.remove('hidden');el('loginPlayerForm').classList.add('hidden')});
-el('showLoginPlayer').addEventListener('click',()=>{renderPlayerEntry();el('loginPlayerForm').classList.remove('hidden');el('createPlayerForm').classList.add('hidden')});
-el('createPlayerForm').addEventListener('submit',e=>{
-  e.preventDefault();
-  const name=el('newPlayerName').value.trim(), pin=el('newPlayerPin').value, confirmPin=el('confirmPlayerPin').value;
-  const msg=el('createPlayerMsg'); msg.classList.remove('hidden');
-  if(name.length<2){msg.textContent='Informe um nome ou apelido.';return}
-  if(!/^\d{4}$/.test(pin)){msg.textContent='O PIN deve ter exatamente 4 números.';return}
-  if(pin!==confirmPin){msg.textContent='Os PINs não conferem.';return}
-  createPlayer(name,pin,el('rememberNewPlayer').checked); show('home');
-});
-el('loginPlayerForm').addEventListener('submit',e=>{
-  e.preventDefault();
-  const ok=loginPlayer(el('loginPlayerSelect').value,el('loginPlayerPin').value,el('rememberLoginPlayer').checked);
-  const msg=el('loginPlayerMsg');
-  if(ok){show('home')}else{msg.classList.remove('hidden');msg.textContent='Jogador ou PIN incorreto.'}
-});
-el('profileBtn').addEventListener('click',()=>{if(!player()){renderPlayerEntry();show('player');return}renderProfile();show('profile')});
-el('profileBack').addEventListener('click',()=>show('home'));
-el('logoutPlayer').addEventListener('click',()=>{
-  data.currentPlayer=''; localStorage.removeItem('quizRememberPlayerId'); save(); updateStats(); renderPlayerEntry(); show('player');
-});
-el('nextQuestion').addEventListener('click',()=>{
-  const btn=el('nextQuestion');
-  if(btn.dataset.mode==='nextPhase'){
-    btn.dataset.mode='question'; btn.textContent='Próxima';
-    startQuiz(currentPhase+1); return;
-  }
-  if(btn.dataset.mode==='retry'){
-    const passedText=el('quizFeedback').textContent.includes('Desafio Final concluído');
-    btn.dataset.mode='question'; btn.textContent='Próxima';
-    if(passedText) openTheme(currentTheme); else startQuiz(currentPhase);
-    return;
-  }
-  quizIndex++; renderQuestion();
-});
-el('leaveQuiz').addEventListener('click',()=>openTheme(currentTheme));
-function closeMobileMenu(){
-  el('sidebar').classList.remove('open');
-  el('mobileMenuBackdrop').classList.remove('show');
-}
-el('mobileMenu').addEventListener('click',e=>{
-  e.stopPropagation();
-  const opening=!el('sidebar').classList.contains('open');
-  el('sidebar').classList.toggle('open');
-  el('mobileMenuBackdrop').classList.toggle('show',opening);
-});
-el('mobileMenuBackdrop').addEventListener('click',closeMobileMenu);
-document.addEventListener('click',e=>{
-  if(window.innerWidth<=900 && el('sidebar').classList.contains('open') &&
-     !el('sidebar').contains(e.target) && !el('mobileMenu').contains(e.target)){
-    closeMobileMenu();
-  }
-});
-document.querySelectorAll('#nav button').forEach(btn=>btn.addEventListener('click',closeMobileMenu));
-
-el('adminLoginForm').addEventListener('submit',e=>{
-  e.preventDefault();
-  if(el('adminUser').value===ADMIN_USER&&el('adminPass').value===ADMIN_PASS){
-    data.adminLogged=true; save(); el('adminLoginMsg').classList.add('hidden'); renderAdminQuestions(); loadSettings(); renderAccessControl(); show('admin');
-  }else{
-    el('adminLoginMsg').textContent='Usuário ou senha incorretos.'; el('adminLoginMsg').className='notice error';
-  }
-});
-el('adminLogout').addEventListener('click',()=>{data.adminLogged=false;save();show('home')});
-el('questionForm').addEventListener('submit',e=>{
-  e.preventDefault();
-  const id=el('questionId').value;
-  const q={
-    id:id||('q'+Date.now()), theme:el('qTheme').value, phase:Number(el('qPhase').value),
-    text:el('qText').value.trim(), answers:[el('qA').value.trim(),el('qB').value.trim(),el('qC').value.trim(),el('qD').value.trim()],
-    correct:Number(el('qCorrect').value), points:Number(el('qPoints').value||10)
-  };
-  if(id){const i=data.questions.findIndex(x=>x.id===id); if(i>=0)data.questions[i]=q}
-  else data.questions.push(q);
-  save(); renderAdminQuestions(); resetQuestionForm();
-  el('questionMsg').textContent='Pergunta salva com sucesso.'; el('questionMsg').className='notice success';
-  setTimeout(()=>el('questionMsg').classList.add('hidden'),2200);
-});
-el('cancelEdit').addEventListener('click',resetQuestionForm);
-el('adminFilter').addEventListener('change',renderAdminQuestions);
-el('saveSettings').addEventListener('click',()=>{
-  data.settings.penalty=Math.max(0,Number(el('settingPenalty').value||0));
-  data.settings.lives=Math.max(1,Number(el('settingLives').value||1));
-  data.settings.pass=Math.min(100,Math.max(1,Number(el('settingPass').value||70)));
-  data.settings.streakBonus=Math.max(0,Number(el('settingStreak').value||0));
-  save(); alert('Regras salvas com sucesso.');
-});
-
-
-el('celebrateNext').addEventListener('click',()=>{
-  closeCelebration();
-  if(currentPhase<10) startQuiz(currentPhase+1); else openTheme(currentTheme);
-});
-el('celebrateReplay').addEventListener('click',()=>{
-  closeCelebration();
-  startQuiz(currentPhase);
-});
-el('celebrateClose').addEventListener('click',()=>{
-  closeCelebration();
-  openTheme(currentTheme);
-});
-
-migratePlayersToIds();
-const rememberedId=localStorage.getItem('quizRememberPlayerId');
-if(rememberedId && data.players[rememberedId]){
-  data.currentPlayer=rememberedId; save(); updateStats(); show('home');
-}else{
-  data.currentPlayer=''; save(); updateStats(); renderPlayerEntry(); show('player');
-}
+function escapeHtml(s=''){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function show(view){document.querySelectorAll('[id^="view-"]').forEach(s=>s.classList.add('hidden'));const x=el('view-'+view);if(x)x.classList.remove('hidden');document.querySelectorAll('#nav button').forEach(b=>b.classList.remove('active'));const a=document.querySelector(`#nav button[data-view="${view}"]`);if(a)a.classList.add('active');el('sidebar').classList.remove('open');el('mobileMenuBackdrop')?.classList.remove('show')}
+function player(){return currentPlayer} function save(){}
+async function rpc(fn,args={}){const r=await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`,{method:'POST',headers:{apikey:SUPABASE_KEY,Authorization:'Bearer '+SUPABASE_KEY,'Content-Type':'application/json'},body:JSON.stringify(args)});const txt=await r.text();let body=null;try{body=txt?JSON.parse(txt):null}catch{body=txt}if(!r.ok)throw new Error(body?.message||txt||'Erro ao acessar o Supabase');return body}
+function setSession(p,pin){currentPlayer=p;currentPin=pin;sessionStorage.setItem('quizCloudPlayerId',p.id);sessionStorage.setItem('quizCloudPin',pin);localStorage.setItem('quizLastPlayerId',p.id);localStorage.setItem('quizLastPlayerName',p.name);updateStats()}
+async function loadCloudPlayer(id,pin){const [prof,prog]=await Promise.all([rpc('get_quiz_player',{p_player_id:id,p_pin:pin}),rpc('get_quiz_progress',{p_player_id:id,p_pin:pin})]);const x=prof?.[0];if(!x)throw new Error('Perfil não encontrado.');const p={id:x.player_id,name:x.player_name,score:x.player_score||0,medals:x.player_medals||0,phases:x.player_phases||0,accessCount:x.access_count||0,firstAccess:x.first_access,lastAccess:x.last_access,lastTheme:x.last_theme,lastPlayedAt:x.last_played_at};currentProgress={mormon:1,biblia:1,dc:1,vem:1};(prog||[]).forEach(v=>currentProgress[v.theme]=Number(v.unlocked_phase)||1);setSession(p,pin);return p}
+async function createPlayer(name,pin){const rows=await rpc('create_quiz_player',{p_name:name,p_pin:pin});const x=rows?.[0];if(!x)throw new Error('Não foi possível criar o perfil.');return loadCloudPlayer(x.player_id,pin)}
+async function loginPlayer(id,pin){const rows=await rpc('login_quiz_player',{p_player_id:id,p_pin:pin});if(!rows?.[0])throw new Error('Login inválido');return loadCloudPlayer(id,pin)}
+function updateStats(){const p=player();el('playerLabel').textContent='Jogador: '+(p?p.name:'Visitante');el('statScore').textContent=p?p.score:0;el('statMedals').textContent=p?p.medals:0;el('statStreak').textContent=streak;el('statPhases').textContent=p?p.phases:0}
+function requirePlayer(){if(player())return true;renderPlayerEntry();show('player');return false}
+async function renderPlayerEntry(){const sel=el('loginPlayerSelect');if(sel)sel.innerHTML='<option>Carregando perfis...</option>';try{const ps=await rpc('list_quiz_players',{});if(sel)sel.innerHTML=ps?.length?ps.map(p=>`<option value="${p.player_id}">${escapeHtml(p.player_name)} • ${String(p.player_id).slice(0,6)}</option>`).join(''):'<option value="">Nenhum perfil criado</option>'}catch{if(sel)sel.innerHTML='<option value="">Falha ao carregar perfis</option>'}const id=localStorage.getItem('quizLastPlayerId'),name=localStorage.getItem('quizLastPlayerName'),box=el('continuePlayerBox');if(id&&name){box.classList.remove('hidden');box.innerHTML=`<strong>👤 Continuar como ${escapeHtml(name)}</strong><div class="muted" style="margin:6px 0 10px">Digite seu PIN para continuar.</div><div style="display:flex;gap:8px;flex-wrap:wrap"><input id="continuePin" type="password" inputmode="numeric" maxlength="4" placeholder="PIN ••••" style="max-width:150px"><button class="btn btn-primary" id="continuePlayerBtn">Continuar</button></div><div id="continueMsg" class="muted" style="margin-top:8px"></div>`;el('continuePlayerBtn').onclick=async()=>{try{await loginPlayer(id,el('continuePin').value);show('home')}catch{el('continueMsg').textContent='PIN incorreto ou falha de conexão.'}}}else box.classList.add('hidden')}
+function renderProfile(){const p=player();if(!p)return;el('profileDetails').innerHTML=`<div class="notice"><strong>${escapeHtml(p.name)}</strong><br><span class="muted">Perfil salvo na nuvem • ID ${escapeHtml(p.id.slice(0,8))}…</span></div><div class="grid2" style="margin-top:14px"><div class="card stat"><div class="label">Pontos</div><div class="value">${p.score||0}</div></div><div class="card stat"><div class="label">Medalhas</div><div class="value">${p.medals||0}</div></div><div class="card stat"><div class="label">Fases concluídas</div><div class="value">${p.phases||0}</div></div><div class="card stat"><div class="label">Nuvem</div><div class="value">☁️</div></div></div>`}
+function openTheme(key){if(!requirePlayer())return;currentTheme=key;el('themeTitle').textContent=themes[key].icon+' '+themes[key].name;el('themeDesc').textContent=themes[key].desc;renderPhases();show('theme')}
+function renderPhases(){const grid=el('phaseGrid');grid.innerHTML='';for(let phase=1;phase<=10;phase++){const unlocked=phase<=(currentProgress[currentTheme]||1),btn=document.createElement('button');btn.className='phase-card'+(!unlocked?' locked':'');btn.disabled=!unlocked;const d=phase<=3?'🟢 Fácil':phase<=6?'🟡 Intermediário':phase<=9?'🔴 Difícil':'🏆 Final';btn.innerHTML=`<div class="muted">${phase===10?'🏆 Desafio Final':'Fase '+phase} • ${d}</div><h3>15 perguntas</h3><p class="muted">${!unlocked?'🔒 Conclua a fase anterior':'Toque para jogar'}</p>`;btn.onclick=()=>startQuiz(phase);grid.appendChild(btn)}}
+function shuffleCloudQuestion(q){const items=(q.answers||[]).map((answer,index)=>({answer,originalIndex:index}));for(let i=items.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[items[i],items[j]]=[items[j],items[i]]}return{id:q.question_id,text:q.question_text,points:Number(q.points||10),answers:items.map(x=>x.answer),answerMap:items.map(x=>x.originalIndex)}}
+async function startQuiz(phase){if(!requirePlayer())return;currentPhase=phase;show('quiz');el('quizQuestion').textContent='Carregando perguntas da nuvem...';el('quizAnswers').innerHTML='';try{const rows=await rpc('get_quiz_questions',{p_theme:currentTheme,p_phase:phase});quizItems=(rows||[]).map(shuffleCloudQuestion);if(quizItems.length!==15)throw new Error('A fase não retornou 15 perguntas.');quizIndex=0;correctCount=0;streak=0;lives=3;answered=false;attemptAnswers=[];renderQuestion();updateStats()}catch(e){el('quizQuestion').textContent='Não foi possível carregar esta fase.';feedback(e.message,false)}}
+function renderQuestion(){if(quizIndex>=quizItems.length){finishQuiz();return}const q=quizItems[quizIndex];answered=false;el('quizThemeBadge').textContent=themes[currentTheme].name;el('quizPhaseBadge').textContent=currentPhase===10?'Desafio Final':'Fase '+currentPhase;el('quizLivesBadge').textContent='❤️ '+lives;el('quizQuestion').textContent=(quizIndex+1)+'. '+q.text;el('quizFeedback').classList.add('hidden');el('nextQuestion').disabled=true;el('nextQuestion').dataset.mode='question';el('nextQuestion').textContent='Próxima';const box=el('quizAnswers');box.innerHTML='';q.answers.forEach((a,i)=>{const b=document.createElement('button');b.className='quiz-answer';b.textContent=String.fromCharCode(65+i)+'. '+a;b.onclick=()=>answerQuestion(i);box.appendChild(b)});el('quizProgress').style.width=Math.round((quizIndex/quizItems.length)*100)+'%'}
+async function answerQuestion(choice){if(answered)return;answered=true;const q=quizItems[quizIndex],original=q.answerMap[choice];document.querySelectorAll('.quiz-answer').forEach(b=>b.disabled=true);try{const rows=await rpc('check_quiz_answer',{p_question_id:q.id,p_selected_answer:original}),ok=!!rows?.[0]?.is_correct;attemptAnswers.push({question_id:q.id,selected_answer:original});const bs=document.querySelectorAll('.quiz-answer');if(ok){bs[choice].classList.add('correct');correctCount++;streak++;feedback(`Acertou! +${q.points} pontos serão confirmados ao final.`,true)}else{bs[choice].classList.add('wrong');lives=Math.max(0,lives-1);streak=0;feedback('Resposta incorreta.',false)}el('quizLivesBadge').textContent='❤️ '+lives;el('nextQuestion').disabled=false;updateStats()}catch{answered=false;document.querySelectorAll('.quiz-answer').forEach(b=>b.disabled=false);feedback('Falha ao validar a resposta. Verifique sua internet.',false)}}
+function feedback(msg,ok){const f=el('quizFeedback');f.textContent=msg;f.className='notice '+(ok?'success':'error')}
+function launchConfetti(){const layer=el('confettiLayer');layer.innerHTML='';for(let i=0;i<70;i++){const c=document.createElement('span');c.className='confetti-piece';c.style.left=Math.random()*100+'vw';c.style.animationDuration=3+Math.random()*2+'s';c.style.setProperty('--drift',((Math.random()-.5)*240)+'px');layer.appendChild(c)}}
+function showCelebration(pct){const p=player();el('celebrationSubtitle').textContent=`Você concluiu ${currentPhase===10?'o Desafio Final':'a Fase '+currentPhase} de ${themes[currentTheme].name}!`;el('celebrateCorrect').textContent=correctCount+'/'+quizItems.length;el('celebratePercent').textContent=pct+'%';el('celebrateScore').textContent=p.score;const n=el('celebrateNext');if(currentPhase<10){n.classList.remove('hidden');n.textContent='Ir para a próxima fase'}else n.classList.add('hidden');el('celebrationOverlay').classList.remove('hidden');launchConfetti()}
+function closeCelebration(){el('celebrationOverlay').classList.add('hidden');el('confettiLayer').innerHTML=''}
+async function finishQuiz(){el('quizQuestion').textContent='Confirmando resultado no Supabase...';el('quizAnswers').innerHTML='';el('nextQuestion').disabled=true;try{const rows=await rpc('submit_quiz_attempt',{p_player_id:player().id,p_pin:currentPin,p_theme:currentTheme,p_phase:currentPhase,p_answers:attemptAnswers}),r=rows?.[0];if(!r)throw new Error('Resultado não retornado.');correctCount=Number(r.correct_answers);const pct=Number(r.percentage),passed=!!r.approved;currentProgress[currentTheme]=Number(r.unlocked_phase);await loadCloudPlayer(currentPlayer.id,currentPin);el('quizQuestion').textContent=passed?`Parabéns! Você concluiu com ${pct}% de acertos.`:`Você fez ${pct}% de acertos. São necessários 70% para avançar.`;el('quizFeedback').className='notice '+(passed?'success':'error');el('quizFeedback').textContent=passed?`Resultado confirmado na nuvem. +${r.points_earned} pontos.`:'Resultado registrado na nuvem. Tente novamente.';el('quizProgress').style.width='100%';if(passed)setTimeout(()=>showCelebration(pct),250);else{el('nextQuestion').disabled=false;el('nextQuestion').dataset.mode='retry';el('nextQuestion').textContent='Tentar novamente'}}catch(e){el('quizQuestion').textContent='Não foi possível registrar o resultado.';feedback(e.message,false)}}
+async function renderRanking(){el('rankingBody').innerHTML='<tr><td colspan="5">Carregando ranking da nuvem...</td></tr>';try{const rows=await rpc('get_quiz_ranking',{});el('rankingBody').innerHTML=rows?.length?rows.map(p=>`<tr><td>${p.ranking_position}º</td><td>${escapeHtml(p.player_name)}</td><td>${p.score}</td><td>${p.medals}</td><td>${p.phases_completed}</td></tr>`).join(''):'<tr><td colspan="5">Nenhum jogador cadastrado.</td></tr>'}catch{el('rankingBody').innerHTML='<tr><td colspan="5">Falha ao carregar ranking.</td></tr>'}}
+async function renderHistory(){const p=player();if(!p){el('historyList').innerHTML='<p class="muted">Entre em um perfil.</p>';return}el('historyList').innerHTML='<p class="muted">Carregando histórico da nuvem...</p>';try{const rows=await rpc('get_quiz_history',{p_player_id:p.id,p_pin:currentPin});el('historyList').innerHTML=rows?.length?rows.map(h=>`<div class="card" style="margin-bottom:10px"><strong>${escapeHtml(themes[h.theme]?.name||h.theme)} — ${Number(h.phase)===10?'Desafio Final':'Fase '+h.phase}</strong><div class="muted">${new Date(h.played_at).toLocaleString('pt-BR')} • ${Number(h.percentage)}% • ${h.approved?'Aprovado':'Não aprovado'}</div></div>`).join(''):'<p class="muted">Nenhuma partida registrada ainda.</p>'}catch{el('historyList').innerHTML='<p class="muted">Falha ao carregar histórico.</p>'}}
+function renderAdminQuestions(){el('questionsBody').innerHTML='<tr><td colspan="5">As perguntas agora estão no Supabase. O ADM em nuvem será conectado na próxima etapa.</td></tr>'}function renderAccessControl(){el('accessPlayers').textContent='☁️';el('accessTotal').textContent='☁️';el('accessCurrent').textContent=player()?player().name:'—';el('accessBody').innerHTML='<tr><td colspan="7">Perfis e acessos agora estão na nuvem. O gerenciamento ADM seguro será conectado na próxima etapa.</td></tr>'}function loadSettings(){el('settingPenalty').value=0;el('settingLives').value=3;el('settingPass').value=70;el('settingStreak').value=0}function resetQuestionForm(){}
+const navHandlers={home:()=>show('home'),ranking:()=>{show('ranking');renderRanking()},history:()=>{show('history');renderHistory()},player:()=>{renderPlayerEntry();show('player')},adminLogin:()=>show('adminLogin')};document.querySelectorAll('#nav button[data-view]').forEach(btn=>btn.addEventListener('click',()=>{const v=btn.dataset.view;(navHandlers[v]||(()=>show(v)))()}));document.querySelectorAll('[data-theme]').forEach(btn=>btn.addEventListener('click',()=>openTheme(btn.dataset.theme)));
+el('showCreatePlayer').onclick=()=>{el('createPlayerForm').classList.remove('hidden');el('loginPlayerForm').classList.add('hidden')};el('showLoginPlayer').onclick=()=>{renderPlayerEntry();el('loginPlayerForm').classList.remove('hidden');el('createPlayerForm').classList.add('hidden')};
+el('createPlayerForm').onsubmit=async e=>{e.preventDefault();const name=el('newPlayerName').value.trim(),pin=el('newPlayerPin').value,confirmPin=el('confirmPlayerPin').value,msg=el('createPlayerMsg');msg.classList.remove('hidden');if(name.length<2){msg.textContent='Informe um nome ou apelido.';return}if(!/^\d{4}$/.test(pin)){msg.textContent='O PIN deve ter exatamente 4 números.';return}if(pin!==confirmPin){msg.textContent='Os PINs não conferem.';return}try{msg.textContent='Criando perfil na nuvem...';await createPlayer(name,pin);show('home')}catch(err){msg.textContent=err.message}};
+el('loginPlayerForm').onsubmit=async e=>{e.preventDefault();const msg=el('loginPlayerMsg');msg.classList.remove('hidden');try{msg.textContent='Entrando...';await loginPlayer(el('loginPlayerSelect').value,el('loginPlayerPin').value);show('home')}catch{msg.textContent='Jogador ou PIN incorreto.'}};
+el('profileBtn').onclick=()=>{if(!player()){renderPlayerEntry();show('player');return}renderProfile();show('profile')};el('profileBack').onclick=()=>show('home');el('logoutPlayer').onclick=()=>{currentPlayer=null;currentPin='';sessionStorage.removeItem('quizCloudPlayerId');sessionStorage.removeItem('quizCloudPin');updateStats();renderPlayerEntry();show('player')};el('nextQuestion').onclick=()=>{if(el('nextQuestion').dataset.mode==='retry'){startQuiz(currentPhase);return}quizIndex++;renderQuestion()};el('leaveQuiz').onclick=()=>openTheme(currentTheme);
+function closeMobileMenu(){el('sidebar').classList.remove('open');el('mobileMenuBackdrop').classList.remove('show')}el('mobileMenu').onclick=e=>{e.stopPropagation();const opening=!el('sidebar').classList.contains('open');el('sidebar').classList.toggle('open');el('mobileMenuBackdrop').classList.toggle('show',opening)};el('mobileMenuBackdrop').onclick=closeMobileMenu;document.addEventListener('click',e=>{if(window.innerWidth<=900&&el('sidebar').classList.contains('open')&&!el('sidebar').contains(e.target)&&!el('mobileMenu').contains(e.target))closeMobileMenu()});
+el('adminLoginForm').onsubmit=e=>{e.preventDefault();if(el('adminUser').value===ADMIN_USER&&el('adminPass').value===ADMIN_PASS){renderAdminQuestions();loadSettings();renderAccessControl();show('admin')}else{el('adminLoginMsg').textContent='Usuário ou senha incorretos.';el('adminLoginMsg').className='notice error'}};el('adminLogout').onclick=()=>show('home');el('questionForm').onsubmit=e=>{e.preventDefault();alert('O editor ADM seguro será conectado na próxima etapa.')};el('cancelEdit').onclick=()=>{};el('adminFilter').onchange=renderAdminQuestions;el('saveSettings').onclick=()=>alert('As regras oficiais são validadas pelo Supabase.');
+el('celebrateNext').onclick=()=>{closeCelebration();if(currentPhase<10)startQuiz(currentPhase+1);else openTheme(currentTheme)};el('celebrateReplay').onclick=()=>{closeCelebration();startQuiz(currentPhase)};el('celebrateClose').onclick=()=>{closeCelebration();openTheme(currentTheme)};
+(async function boot(){updateStats();const id=sessionStorage.getItem('quizCloudPlayerId'),pin=sessionStorage.getItem('quizCloudPin');if(id&&pin){try{await loadCloudPlayer(id,pin);show('home');return}catch{sessionStorage.removeItem('quizCloudPlayerId');sessionStorage.removeItem('quizCloudPin')}}await renderPlayerEntry();show('player')})();
 </script>
 
 <script>
