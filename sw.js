@@ -1,4 +1,4 @@
-const CACHE_NAME='quiz-pwa-v12-visual';
+const CACHE_NAME='quiz-pwa-v12-1-lives';
 const APP_SHELL=['./index.html','./manifest.json','./icon.svg'];
 
 self.addEventListener('install',event=>{
